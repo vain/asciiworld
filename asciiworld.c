@@ -26,24 +26,6 @@ screen_init(struct screen *s, int width, int height)
 }
 
 void
-screen_show(struct screen *s)
-{
-    int x, y;
-
-    for (y = 0; y < s->height; y++)
-    {
-        for (x = 0; x < s->width; x++)
-        {
-            if (s->data[y * s->width + x])
-                printf("x");
-            else
-                printf(" ");
-        }
-        printf("\n");
-    }
-}
-
-void
 screen_show_interpreted(struct screen *s)
 {
     int x, y;
@@ -294,27 +276,6 @@ out:
     return ret;
 }
 
-void
-screen_draw_circle(struct screen *s)
-{
-    double phi = 0, r = s->height / 3;
-    int i, steps = 6;
-    int cx, cy;
-
-    cx = s->width / 2;
-    cy = s->height / 2;
-
-    for (i = 0; i < steps; i++)
-    {
-        screen_draw_line(s,
-                         cx + r * sin(phi),
-                         cy + r * cos(phi),
-                         cx + r * sin(phi + 2 * 3.1415 / steps),
-                         cy + r * cos(phi + 2 * 3.1415 / steps));
-        phi += 2 * 3.1415 / steps;
-    }
-}
-
 int
 main()
 {
@@ -322,19 +283,20 @@ main()
     struct winsize w;
 
     if (isatty(STDOUT_FILENO))
+    {
         ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+        w.ws_row--;
+    }
     else
     {
         w.ws_col = 80;
         w.ws_row = 24;
     }
+
     if (!screen_init(&s, 2 * w.ws_col, 2 * w.ws_row))
         exit(EXIT_FAILURE);
-    /*
     if (!screen_draw_map(&s, "world.map"))
         exit(EXIT_FAILURE);
-        */
-    screen_draw_circle(&s);
     screen_show_interpreted(&s);
 
     exit(EXIT_SUCCESS);
