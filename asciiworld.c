@@ -281,7 +281,7 @@ main(int argc, char **argv)
 {
     struct screen s;
     struct winsize w;
-	int opt;
+    int opt;
 
     if (isatty(STDOUT_FILENO))
     {
@@ -293,20 +293,20 @@ main(int argc, char **argv)
         w.ws_row = 24;
     }
 
-	while ((opt = getopt(argc, argv, "w:h:")) != -1)
-	{
-		switch (opt)
-		{
-			case 'w':
-				w.ws_col = atoi(optarg);
-				break;
-			case 'h':
-				w.ws_row = atoi(optarg);
-				break;
-			default:
-				exit(EXIT_FAILURE);
-		}
-	}
+    while ((opt = getopt(argc, argv, "w:h:")) != -1)
+    {
+        switch (opt)
+        {
+            case 'w':
+                w.ws_col = atoi(optarg);
+                break;
+            case 'h':
+                w.ws_row = atoi(optarg);
+                break;
+            default:
+                exit(EXIT_FAILURE);
+        }
+    }
 
     if (!screen_init(&s, 2 * w.ws_col, 2 * w.ws_row))
         exit(EXIT_FAILURE);
