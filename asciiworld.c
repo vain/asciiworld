@@ -16,13 +16,12 @@ screen_init(struct screen *s, int width, int height)
 {
     s->width = width;
     s->height = height;
-    s->data = malloc(width * height);
+    s->data = calloc(1, width * height);
     if (s->data == NULL)
     {
         fprintf(stderr, "Out of memory in screen_init()\n");
         return 0;
     }
-    memset(s->data, ' ', width * height);
     return 1;
 }
 
@@ -30,28 +29,70 @@ void
 screen_show(struct screen *s)
 {
     int x, y;
+
     for (y = 0; y < s->height; y++)
     {
         for (x = 0; x < s->width; x++)
         {
-            printf("%c", s->data[y * s->width + x]);
+            if (s->data[y * s->width + x])
+                printf("x");
+            else
+                printf(" ");
         }
         printf("\n");
     }
 }
 
 void
-screen_show_as(struct screen *s, char *blank, char *filled)
+screen_show_interpreted(struct screen *s)
 {
     int x, y;
-    for (y = 0; y < s->height; y++)
+    char a, b, c, d;
+
+    for (y = 0; y < s->height - 1; y += 2)
     {
-        for (x = 0; x < s->width; x++)
+        for (x = 0; x < s->width - 1; x += 2)
         {
-            if (s->data[y * s->width + x] == ' ')
-                printf("%s", blank);
-            else
-                printf("%s", filled);
+            a = s->data[y * s->width + x];
+            b = s->data[y * s->width + x + 1];
+            c = s->data[(y + 1) * s->width + x];
+            d = s->data[(y + 1) * s->width + x + 1];
+
+            if (!a && !b && !c && !d)
+                printf(" ");
+
+            else if (!a && !b && !c &&  d)
+                printf(".");
+            else if (!a && !b &&  c && !d)
+                printf(",");
+            else if (!a && !b &&  c &&  d)
+                printf("_");
+            else if (!a &&  b && !c && !d)
+                printf("'");
+            else if (!a &&  b && !c &&  d)
+                printf("|");
+            else if (!a &&  b &&  c && !d)
+                printf("/");
+            else if (!a &&  b &&  c &&  d)
+                printf("J");
+
+            else if ( a && !b && !c && !d)
+                printf("`");
+            else if ( a && !b && !c &&  d)
+                printf("\\");
+            else if ( a && !b &&  c && !d)
+                printf("|");
+            else if ( a && !b &&  c &&  d)
+                printf("L");
+            else if ( a &&  b && !c && !d)
+                printf("\"");
+            else if ( a &&  b && !c &&  d)
+                printf("7");
+            else if ( a &&  b &&  c && !d)
+                printf("r");
+
+            else if ( a &&  b &&  c &&  d)
+                printf("#");
         }
         printf("\n");
     }
@@ -61,7 +102,7 @@ void
 screen_set_pixel(struct screen *s, int x, int y)
 {
     if (x >= 0 && y >= 0 && x < s->width && y < s->height)
-        s->data[y * s->width + x] = 'x';
+        s->data[y * s->width + x] = 1;
 }
 
 void
@@ -253,19 +294,48 @@ out:
     return ret;
 }
 
+void
+screen_draw_circle(struct screen *s)
+{
+    double phi = 0, r = s->height / 3;
+    int i, steps = 6;
+    int cx, cy;
+
+    cx = s->width / 2;
+    cy = s->height / 2;
+
+    for (i = 0; i < steps; i++)
+    {
+        screen_draw_line(s,
+                         cx + r * sin(phi),
+                         cy + r * cos(phi),
+                         cx + r * sin(phi + 2 * 3.1415 / steps),
+                         cy + r * cos(phi + 2 * 3.1415 / steps));
+        phi += 2 * 3.1415 / steps;
+    }
+}
+
 int
 main()
 {
     struct screen s;
     struct winsize w;
 
-    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-
-    if (!screen_init(&s, w.ws_col, w.ws_row))
+    if (isatty(STDOUT_FILENO))
+        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    else
+    {
+        w.ws_col = 80;
+        w.ws_row = 24;
+    }
+    if (!screen_init(&s, 2 * w.ws_col, 2 * w.ws_row))
         exit(EXIT_FAILURE);
+    /*
     if (!screen_draw_map(&s, "world.map"))
         exit(EXIT_FAILURE);
-    screen_show_as(&s, " ", "#");
+        */
+    screen_draw_circle(&s);
+    screen_show_interpreted(&s);
 
     exit(EXIT_SUCCESS);
 }
