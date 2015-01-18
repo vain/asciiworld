@@ -1,5 +1,8 @@
-CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3
-LDFLAGS += -lm
+CFLAGS += -Wall -Wextra -O3
+LDLIBS += -lm -lshp
 
-.PHONY: all
+.PHONY: all clean
 all: asciiworld
+
+clean:
+	rm -f asciiworld

@@ -1,4 +1,5 @@
 #include <math.h>
+#include <shapefil.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -159,119 +160,82 @@ screen_draw_line_scaled(struct screen *s, int ow, int oh, int x1, int y1,
 int
 screen_draw_map(struct screen *s, char *file)
 {
-    FILE *fp;
     int ret = 1;
-    double width, height, x, y, dx, dy;
-    char cmd;
+    int i, n, t, p, v, isFirst;
+    double bmin[4], bmax[4];
+    double x1, y1, mapw, maph;
+    SHPHandle h;
+    SHPObject *o;
 
-    fp = fopen(file, "r");
-    if (fp == NULL)
+    h = SHPOpen(file, "rb");
+    if (h == NULL)
     {
-        fprintf(stderr, "Cannot open file '%s'\n", file);
+        fprintf(stderr, "Could not open shapefile\n");
         ret = 0;
         goto out;
     }
 
-    if (fscanf(fp, "%lf %lf\n", &width, &height) != 2)
+    SHPGetInfo(h, &n, &t, bmin, bmax);
+
+    if (t != SHPT_POLYGON)
     {
-        fprintf(stderr, "Cannot read map size\n");
+        fprintf(stderr, "This is not a polygon file\n");
         ret = 0;
         goto cleanout;
     }
 
-    while (fscanf(fp, "%c", &cmd) == 1)
+    mapw = bmax[0] - bmin[0];
+    maph = bmax[1] - bmin[1];
+
+    for (i = 0; i < n; i++)
     {
-        if (cmd == 'M')
+        o = SHPReadObject(h, i);
+        if (o == NULL)
         {
-            if (fscanf(fp, " %lf %lf ", &x, &y) != 2)
-            {
-                fprintf(stderr, "Cannot read pos for M\n");
-                ret = 0;
-                goto cleanout;
-            }
-        }
-        else if (cmd == 'l')
-        {
-            if (fscanf(fp, " %lf %lf ", &dx, &dy) != 2)
-            {
-                fprintf(stderr, "Cannot read deltas for l\n");
-                ret = 0;
-                goto cleanout;
-            }
-            screen_draw_line_scaled(s, width, height, x, y, x + dx, y + dy);
-            x += dx;
-            y += dy;
-        }
-        else if (cmd == 'v')
-        {
-            if (fscanf(fp, " %lf ", &dy) != 1)
-            {
-                fprintf(stderr, "Cannot read delta for v\n");
-                ret = 0;
-                goto cleanout;
-            }
-            screen_draw_line_scaled(s, width, height, x, y, x, y + dy);
-            y += dy;
-        }
-        else if (cmd == 'h')
-        {
-            if (fscanf(fp, " %lf ", &dx) != 1)
-            {
-                fprintf(stderr, "Cannot read delta for h\n");
-                ret = 0;
-                goto cleanout;
-            }
-            screen_draw_line_scaled(s, width, height, x, y, x + dx, y);
-            x += dx;
-        }
-        else if (cmd == 'L')
-        {
-            if (fscanf(fp, " %lf %lf ", &dx, &dy) != 2)
-            {
-                fprintf(stderr, "Cannot read pos for L\n");
-                ret = 0;
-                goto cleanout;
-            }
-            screen_draw_line_scaled(s, width, height, x, y, dx, dy);
-            x = dx;
-            y = dy;
-        }
-        else if (cmd == 'V')
-        {
-            if (fscanf(fp, " %lf ", &dy) != 1)
-            {
-                fprintf(stderr, "Cannot read pos for V\n");
-                ret = 0;
-                goto cleanout;
-            }
-            screen_draw_line_scaled(s, width, height, x, y, x, dy);
-            y = dy;
-        }
-        else if (cmd == 'H')
-        {
-            if (fscanf(fp, " %lf ", &dx) != 1)
-            {
-                fprintf(stderr, "Cannot read pos for H\n");
-                ret = 0;
-                goto cleanout;
-            }
-            screen_draw_line_scaled(s, width, height, x, y, dx, y);
-            x = dx;
-        }
-        else if (cmd == 'z')
-        {
-            fscanf(fp, " ");
-        }
-        else
-        {
-            fprintf(stderr, "Unknown line command '%c'\n", cmd);
+            fprintf(stderr, "Could not read object %d\n", i);
             ret = 0;
             goto cleanout;
         }
+
+        if (o->nSHPType != SHPT_POLYGON)
+        {
+            fprintf(stderr, "Shape %d is not a polygon", i);
+            ret = 0;
+            goto cleanout;
+        }
+
+        v = 0;
+        p = 0;
+        isFirst = 1;
+
+        while (v < o->nVertices)
+        {
+            if (p < o->nParts && v == o->panPartStart[p])
+            {
+                /* Start of part "p" */
+                isFirst = 1;
+                p++;
+            }
+            if (!isFirst)
+            {
+                /* y is flipped */
+                screen_draw_line_scaled(s, mapw, maph,
+                                        x1 - bmin[0],
+                                        maph - (y1 - bmin[1]),
+                                        o->padfX[v] - bmin[0],
+                                        maph - (o->padfY[v] - bmin[1]));
+            }
+            x1 = o->padfX[v];
+            y1 = o->padfY[v];
+            isFirst = 0;
+            v++;
+        }
+
+        SHPDestroyObject(o);
     }
 
 cleanout:
-    fclose(fp);
+    SHPClose(h);
 out:
     return ret;
 }
@@ -282,6 +246,7 @@ main(int argc, char **argv)
     struct screen s;
     struct winsize w;
     int opt;
+    char *map = "ne_110m_land.shp";
 
     if (isatty(STDOUT_FILENO))
     {
@@ -293,7 +258,7 @@ main(int argc, char **argv)
         w.ws_row = 24;
     }
 
-    while ((opt = getopt(argc, argv, "w:h:")) != -1)
+    while ((opt = getopt(argc, argv, "w:h:m:")) != -1)
     {
         switch (opt)
         {
@@ -303,6 +268,9 @@ main(int argc, char **argv)
             case 'h':
                 w.ws_row = atoi(optarg);
                 break;
+            case 'm':
+                map = optarg;
+                break;
             default:
                 exit(EXIT_FAILURE);
         }
@@ -310,7 +278,7 @@ main(int argc, char **argv)
 
     if (!screen_init(&s, 2 * w.ws_col, 2 * w.ws_row))
         exit(EXIT_FAILURE);
-    if (!screen_draw_map(&s, "world.map"))
+    if (!screen_draw_map(&s, map))
         exit(EXIT_FAILURE);
     screen_show_interpreted(&s);
 
