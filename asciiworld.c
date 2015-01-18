@@ -141,15 +141,16 @@ screen_draw_line(struct screen *s, int x1, int y1, int x2, int y2)
 }
 
 void
-screen_draw_line_scaled(struct screen *s, int ow, int oh, int x1, int y1,
-                        int x2, int y2)
+screen_draw_line_projected(struct screen *s, int x1, int y1, int x2, int y2)
 {
     double sx1, sy1, sx2, sy2;
 
-    sx1 = (double)x1 / ow * s->width;
-    sy1 = (double)y1 / oh * s->height;
-    sx2 = (double)x2 / ow * s->width;
-    sy2 = (double)y2 / oh * s->height;
+    /* y is flipped */
+
+    sx1 = (double)(x1 + 180) / 360 * s->width;
+    sy1 = (double)(180 - (y1 + 90)) / 180 * s->height;
+    sx2 = (double)(x2 + 180) / 360 * s->width;
+    sy2 = (double)(180 - (y2 + 90)) / 180 * s->height;
 
     if ((int)sx1 == (int)sx2 && (int)sy1 == (int)sy2)
         return;
@@ -162,8 +163,7 @@ screen_draw_map(struct screen *s, char *file)
 {
     int ret = 1;
     int i, n, t, p, v, isFirst;
-    double bmin[4], bmax[4];
-    double x1, y1, mapw, maph;
+    double x1, y1;
     SHPHandle h;
     SHPObject *o;
 
@@ -175,7 +175,7 @@ screen_draw_map(struct screen *s, char *file)
         goto out;
     }
 
-    SHPGetInfo(h, &n, &t, bmin, bmax);
+    SHPGetInfo(h, &n, &t, NULL, NULL);
 
     if (t != SHPT_POLYGON)
     {
@@ -183,9 +183,6 @@ screen_draw_map(struct screen *s, char *file)
         ret = 0;
         goto cleanout;
     }
-
-    mapw = bmax[0] - bmin[0];
-    maph = bmax[1] - bmin[1];
 
     for (i = 0; i < n; i++)
     {
@@ -219,11 +216,7 @@ screen_draw_map(struct screen *s, char *file)
             if (!isFirst)
             {
                 /* y is flipped */
-                screen_draw_line_scaled(s, mapw, maph,
-                                        x1 - bmin[0],
-                                        maph - (y1 - bmin[1]),
-                                        o->padfX[v] - bmin[0],
-                                        maph - (o->padfY[v] - bmin[1]));
+                screen_draw_line_projected(s, x1, y1, o->padfX[v], o->padfY[v]);
             }
             x1 = o->padfX[v];
             y1 = o->padfY[v];
