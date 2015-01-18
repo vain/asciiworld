@@ -41,7 +41,10 @@ screen_show_interpreted(struct screen *s)
             c = s->data[(y + 1) * s->width + x];
             d = s->data[(y + 1) * s->width + x + 1];
 
-            if (!a && !b && !c && !d)
+            if (a == 2 || b == 2 || c == 2 || d == 2)
+                printf("\033[31mX\033[0m");
+
+            else if (!a && !b && !c && !d)
                 printf(" ");
 
             else if (!a && !b && !c &&  d)
@@ -82,10 +85,10 @@ screen_show_interpreted(struct screen *s)
 }
 
 void
-screen_set_pixel(struct screen *s, int x, int y)
+screen_set_pixel(struct screen *s, int x, int y, char val)
 {
     if (x >= 0 && y >= 0 && x < s->width && y < s->height)
-        s->data[y * s->width + x] = 1;
+        s->data[y * s->width + x] = val;
 }
 
 void
@@ -120,7 +123,7 @@ screen_draw_line(struct screen *s, int x1, int y1, int x2, int y2)
     x = x1;
     y = y1;
     err = el / 2;
-    screen_set_pixel(s, x, y);
+    screen_set_pixel(s, x, y, 1);
 
     for (t = 0; t < el; t++)
     {
@@ -136,7 +139,7 @@ screen_draw_line(struct screen *s, int x1, int y1, int x2, int y2)
             x += pdx;
             y += pdy;
         }
-        screen_set_pixel(s, x, y);
+        screen_set_pixel(s, x, y, 1);
     }
 }
 
@@ -234,12 +237,48 @@ out:
 }
 
 int
+screen_mark_locations(struct screen *s, char *file)
+{
+    FILE *fp;
+    int scanret = 0;
+    double lat, lon, sx, sy;
+
+    fp = fopen(file, "r");
+    if (fp == NULL)
+    {
+        fprintf(stderr, "Could not open locations file\n");
+        return 0;
+    }
+
+    while (1)
+    {
+        scanret = fscanf(fp, "%lf %lf\n", &lat, &lon);
+
+        if (scanret == EOF)
+            break;
+
+        if (scanret == 2)
+        {
+            sx = (double)(lon + 180) / 360 * s->width;
+            sy = (double)(180 - (lat + 90)) / 180 * s->height;
+
+            s->data[(int)sy * s->width + (int)sx] = 2;
+        }
+    }
+
+    fclose(fp);
+
+    return 1;
+}
+
+int
 main(int argc, char **argv)
 {
     struct screen s;
     struct winsize w;
     int opt;
     char *map = "ne_110m_land.shp";
+    char *highlight_locations = NULL;
 
     if (isatty(STDOUT_FILENO))
     {
@@ -251,7 +290,7 @@ main(int argc, char **argv)
         w.ws_row = 24;
     }
 
-    while ((opt = getopt(argc, argv, "w:h:m:")) != -1)
+    while ((opt = getopt(argc, argv, "w:h:m:l:")) != -1)
     {
         switch (opt)
         {
@@ -264,6 +303,9 @@ main(int argc, char **argv)
             case 'm':
                 map = optarg;
                 break;
+            case 'l':
+                highlight_locations = optarg;
+                break;
             default:
                 exit(EXIT_FAILURE);
         }
@@ -273,6 +315,9 @@ main(int argc, char **argv)
         exit(EXIT_FAILURE);
     if (!screen_draw_map(&s, map))
         exit(EXIT_FAILURE);
+    if (highlight_locations != NULL)
+        if (!screen_mark_locations(&s, highlight_locations))
+            exit(EXIT_FAILURE);
     screen_show_interpreted(&s);
 
     exit(EXIT_SUCCESS);
