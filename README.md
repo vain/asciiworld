@@ -25,3 +25,8 @@ More ideas
 *  Highlight locations or areas.
 *  Add a day-and-night mode.
 *  Highlight countries.
+
+CREDITS
+-------
+
+* [Bresenham](https://de.wikipedia.org/wiki/Bresenham-Algorithmus#C-Implementierung)
