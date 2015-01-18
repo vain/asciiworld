@@ -8,7 +8,10 @@ You need a map, see `svg_extractor`.
 
 More ideas:
 
-* Zoom/pan/crop.
-* Highlight locations or areas.
-* Add a day-and-night mode.
-* Highlight countries.
+*  Zoom/pan/crop.
+*  Highlight locations or areas.
+*  Add a day-and-night mode.
+*  Highlight countries.
+*  Complete rewrite to use raw data:
+   *  [Land polygons](http://www.naturalearthdata.com/downloads/110m-physical-vectors/)
+   *  [Shapefile library](http://shapelib.maptools.org/)
