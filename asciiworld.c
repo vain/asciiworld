@@ -12,6 +12,18 @@ struct screen
     char *data;
 };
 
+double
+project_x(struct screen *s, double x)
+{
+    return (x + 180) / 360 * s->width;
+}
+
+double
+project_y(struct screen *s, double y)
+{
+    return (180 - (y + 90)) / 180 * s->height;
+}
+
 int
 screen_init(struct screen *s, int width, int height)
 {
@@ -150,10 +162,10 @@ screen_draw_line_projected(struct screen *s, int x1, int y1, int x2, int y2)
 
     /* y is flipped */
 
-    sx1 = (double)(x1 + 180) / 360 * s->width;
-    sy1 = (double)(180 - (y1 + 90)) / 180 * s->height;
-    sx2 = (double)(x2 + 180) / 360 * s->width;
-    sy2 = (double)(180 - (y2 + 90)) / 180 * s->height;
+    sx1 = project_x(s, x1);
+    sy1 = project_y(s, y1);
+    sx2 = project_x(s, x2);
+    sy2 = project_y(s, y2);
 
     if ((int)sx1 == (int)sx2 && (int)sy1 == (int)sy2)
         return;
@@ -259,8 +271,8 @@ screen_mark_locations(struct screen *s, char *file)
 
         if (scanret == 2)
         {
-            sx = (double)(lon + 180) / 360 * s->width;
-            sy = (double)(180 - (lat + 90)) / 180 * s->height;
+            sx = project_x(s, lon);
+            sy = project_y(s, lat);
 
             s->data[(int)sy * s->width + (int)sx] = 2;
         }
