@@ -26,27 +26,27 @@ struct screen
 };
 
 double
-project_x(struct screen *s, double x)
+project_x(struct screen *s, double lon)
 {
-    return (x + 180) / 360 * s->width;
+    return (lon + 180) / 360 * s->width;
 }
 
 double
-project_y(struct screen *s, double y)
+project_y(struct screen *s, double lat)
 {
-    return (180 - (y + 90)) / 180 * s->height;
+    return (180 - (lat + 90)) / 180 * s->height;
 }
 
 double
-unproject_x(struct screen *s, double px)
+unproject_x(struct screen *s, double x)
 {
-    return (px * 360) / s->width - 180;
+    return (x * 360) / s->width - 180;
 }
 
 double
-unproject_y(struct screen *s, double py)
+unproject_y(struct screen *s, double y)
 {
-    return 90 - (py * 180) / s->height;
+    return 90 - (y * 180) / s->height;
 }
 
 void
@@ -259,21 +259,21 @@ screen_draw_line(struct screen *s, int x1, int y1, int x2, int y2)
 }
 
 void
-screen_draw_line_projected(struct screen *s, int x1, int y1, int x2, int y2)
+screen_draw_line_projected(struct screen *s, int lon1, int lat1, int lon2, int lat2)
 {
-    double sx1, sy1, sx2, sy2;
+    double x1, y1, x2, y2;
 
     /* y is flipped */
 
-    sx1 = project_x(s, x1);
-    sy1 = project_y(s, y1);
-    sx2 = project_x(s, x2);
-    sy2 = project_y(s, y2);
+    x1 = project_x(s, lon1);
+    y1 = project_y(s, lat1);
+    x2 = project_x(s, lon2);
+    y2 = project_y(s, lat2);
 
-    if ((int)sx1 == (int)sx2 && (int)sy1 == (int)sy2)
+    if ((int)x1 == (int)x2 && (int)y1 == (int)y2)
         return;
 
-    screen_draw_line(s, sx1, sy1, sx2, sy2);
+    screen_draw_line(s, x1, y1, x2, y2);
 }
 
 int
@@ -281,7 +281,7 @@ screen_draw_map(struct screen *s, char *file)
 {
     int ret = 1;
     int i, n, t, p, v, isFirst;
-    double x1, y1;
+    double lon1, lat1;
     SHPHandle h;
     SHPObject *o;
 
@@ -337,10 +337,10 @@ screen_draw_map(struct screen *s, char *file)
             if (!isFirst)
             {
                 /* y is flipped */
-                screen_draw_line_projected(s, x1, y1, o->padfX[v], o->padfY[v]);
+                screen_draw_line_projected(s, lon1, lat1, o->padfX[v], o->padfY[v]);
             }
-            x1 = o->padfX[v];
-            y1 = o->padfY[v];
+            lon1 = o->padfX[v];
+            lat1 = o->padfY[v];
             isFirst = 0;
             v++;
         }
@@ -392,12 +392,12 @@ screen_mark_locations(struct screen *s, char *file)
 void
 screen_mark_sun(struct screen *s)
 {
-    double sx, sy;
+    double x, y;
 
-    sx = project_x(s, s->sun.lon);
-    sy = project_y(s, s->sun.lat);
+    x = project_x(s, s->sun.lon);
+    y = project_y(s, s->sun.lat);
 
-    s->data[(int)sy * s->width + (int)sx] = PIXEL_SUN;
+    s->data[(int)y * s->width + (int)x] = PIXEL_SUN;
 }
 
 int
