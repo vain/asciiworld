@@ -4,12 +4,25 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <time.h>
 #include <unistd.h>
+
+#define PIXEL_NORMAL 1
+#define PIXEL_HIGHLIGHT 2
+#define PIXEL_DARK 3
+#define PIXEL_SUN 4
 
 struct screen
 {
     int width, height;
     char *data;
+
+    struct sun
+    {
+        int active;
+        double lon, lat;
+        double x, y, z;
+    } sun;
 };
 
 double
@@ -22,6 +35,69 @@ double
 project_y(struct screen *s, double y)
 {
     return (180 - (y + 90)) / 180 * s->height;
+}
+
+double
+unproject_x(struct screen *s, double px)
+{
+    return (px * 360) / s->width - 180;
+}
+
+double
+unproject_y(struct screen *s, double py)
+{
+    return 90 - (py * 180) / s->height;
+}
+
+void
+calc_sun(struct sun *sun)
+{
+    time_t t;
+    struct tm utc;
+
+    time(&t);
+    gmtime_r(&t, &utc);
+
+    /* See german notes in "sonnenstand.txt". */
+    sun->lon = ((utc.tm_hour * 60 * 60 + utc.tm_min * 60 + utc.tm_sec) -
+                (86400.0 / 2 + ((-0.171 * sin(0.0337 * (utc.tm_yday + 1) + 0.465) -
+                 0.1299 * sin(0.01787 * (utc.tm_yday + 1) - 0.168)) * -3600))) *
+               (-360.0 / 86400);
+    sun->lat = 0.4095 * sin(0.016906 * ((utc.tm_yday + 1) - 80.086)) * 180 / M_PI;
+
+    /* Precalc cartesian coordinates. */
+    sun->x = sin((sun->lat + 90) * M_PI / 180) * cos(sun->lon * M_PI / 180);
+    sun->y = sin((sun->lat + 90) * M_PI / 180) * sin(sun->lon * M_PI / 180);
+    sun->z = cos((sun->lat + 90) * M_PI / 180);
+}
+
+char
+decide_shade(struct screen *s, int x, int y)
+{
+    double lon, lat;
+    double px, py, pz;
+    double sp;
+
+    if (!s->sun.active)
+        return PIXEL_NORMAL;
+
+    /* Unproject the point, calc cartesian coordinates of it and then
+     * use the scalar product to determine whether this point lies on
+     * the same half of the earth as the "sun point". */
+
+    lon = unproject_x(s, x);  /* phi */
+    lat = unproject_y(s, y);  /* theta */
+
+    px = sin((lat + 90) * M_PI / 180) * cos(lon * M_PI / 180);
+    py = sin((lat + 90) * M_PI / 180) * sin(lon * M_PI / 180);
+    pz = cos((lat + 90) * M_PI / 180);
+
+    sp = px * s->sun.x + py * s->sun.y + pz * s->sun.z;
+
+    if (sp < 0)
+        return PIXEL_DARK;
+    else
+        return PIXEL_NORMAL;
 }
 
 int
@@ -41,7 +117,7 @@ screen_init(struct screen *s, int width, int height)
 void
 screen_show_interpreted(struct screen *s)
 {
-    int x, y;
+    int x, y, sun_found;
     char a, b, c, d;
 
     for (y = 0; y < s->height - 1; y += 2)
@@ -53,44 +129,70 @@ screen_show_interpreted(struct screen *s)
             c = s->data[(y + 1) * s->width + x];
             d = s->data[(y + 1) * s->width + x + 1];
 
-            if (a == 2 || b == 2 || c == 2 || d == 2)
-                printf("\033[31mX\033[0m");
+            if (a == PIXEL_HIGHLIGHT || b == PIXEL_HIGHLIGHT ||
+                c == PIXEL_HIGHLIGHT || d == PIXEL_HIGHLIGHT)
+                printf("\033[31;1mX\033[0m");
+            else
+            {
+                sun_found = 0;
 
-            else if (!a && !b && !c && !d)
-                printf(" ");
+                if (s->sun.active)
+                {
+                    if (a == PIXEL_SUN || b == PIXEL_SUN ||
+                        c == PIXEL_SUN || d == PIXEL_SUN)
+                    {
+                        sun_found = 1;
+                        printf("\033[36;1mS\033[0m");
+                    }
+                    else if (a == PIXEL_DARK || b == PIXEL_DARK ||
+                             c == PIXEL_DARK || d == PIXEL_DARK)
+                        printf("\033[30;1m");
+                    else
+                        printf("\033[33m");
+                }
 
-            else if (!a && !b && !c &&  d)
-                printf(".");
-            else if (!a && !b &&  c && !d)
-                printf(",");
-            else if (!a && !b &&  c &&  d)
-                printf("_");
-            else if (!a &&  b && !c && !d)
-                printf("'");
-            else if (!a &&  b && !c &&  d)
-                printf("|");
-            else if (!a &&  b &&  c && !d)
-                printf("/");
-            else if (!a &&  b &&  c &&  d)
-                printf("J");
+                if (!sun_found)
+                {
+                    if (!a && !b && !c && !d)
+                        printf(" ");
 
-            else if ( a && !b && !c && !d)
-                printf("`");
-            else if ( a && !b && !c &&  d)
-                printf("\\");
-            else if ( a && !b &&  c && !d)
-                printf("|");
-            else if ( a && !b &&  c &&  d)
-                printf("L");
-            else if ( a &&  b && !c && !d)
-                printf("\"");
-            else if ( a &&  b && !c &&  d)
-                printf("7");
-            else if ( a &&  b &&  c && !d)
-                printf("r");
+                    else if (!a && !b && !c &&  d)
+                        printf(".");
+                    else if (!a && !b &&  c && !d)
+                        printf(",");
+                    else if (!a && !b &&  c &&  d)
+                        printf("_");
+                    else if (!a &&  b && !c && !d)
+                        printf("'");
+                    else if (!a &&  b && !c &&  d)
+                        printf("|");
+                    else if (!a &&  b &&  c && !d)
+                        printf("/");
+                    else if (!a &&  b &&  c &&  d)
+                        printf("J");
 
-            else if ( a &&  b &&  c &&  d)
-                printf("#");
+                    else if ( a && !b && !c && !d)
+                        printf("`");
+                    else if ( a && !b && !c &&  d)
+                        printf("\\");
+                    else if ( a && !b &&  c && !d)
+                        printf("|");
+                    else if ( a && !b &&  c &&  d)
+                        printf("L");
+                    else if ( a &&  b && !c && !d)
+                        printf("\"");
+                    else if ( a &&  b && !c &&  d)
+                        printf("7");
+                    else if ( a &&  b &&  c && !d)
+                        printf("r");
+
+                    else if ( a &&  b &&  c &&  d)
+                        printf("#");
+
+                    if (s->sun.active)
+                        printf("\033[0m");
+                }
+            }
         }
         printf("\n");
     }
@@ -135,7 +237,7 @@ screen_draw_line(struct screen *s, int x1, int y1, int x2, int y2)
     x = x1;
     y = y1;
     err = el / 2;
-    screen_set_pixel(s, x, y, 1);
+    screen_set_pixel(s, x, y, decide_shade(s, x, y));
 
     for (t = 0; t < el; t++)
     {
@@ -151,7 +253,7 @@ screen_draw_line(struct screen *s, int x1, int y1, int x2, int y2)
             x += pdx;
             y += pdy;
         }
-        screen_set_pixel(s, x, y, 1);
+        screen_set_pixel(s, x, y, decide_shade(s, x, y));
     }
 }
 
@@ -181,6 +283,9 @@ screen_draw_map(struct screen *s, char *file)
     double x1, y1;
     SHPHandle h;
     SHPObject *o;
+
+    if (s->sun.active)
+        calc_sun(&s->sun);
 
     h = SHPOpen(file, "rb");
     if (h == NULL)
@@ -274,13 +379,24 @@ screen_mark_locations(struct screen *s, char *file)
             sx = project_x(s, lon);
             sy = project_y(s, lat);
 
-            s->data[(int)sy * s->width + (int)sx] = 2;
+            s->data[(int)sy * s->width + (int)sx] = PIXEL_HIGHLIGHT;
         }
     }
 
     fclose(fp);
 
     return 1;
+}
+
+void
+screen_mark_sun(struct screen *s)
+{
+    double sx, sy;
+
+    sx = project_x(s, s->sun.lon);
+    sy = project_y(s, s->sun.lat);
+
+    s->data[(int)sy * s->width + (int)sx] = PIXEL_SUN;
 }
 
 int
@@ -292,6 +408,8 @@ main(int argc, char **argv)
     char *map = "ne_110m_land.shp";
     char *highlight_locations = NULL;
 
+    s.sun.active = 0;
+
     if (isatty(STDOUT_FILENO))
     {
         ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
@@ -302,7 +420,7 @@ main(int argc, char **argv)
         w.ws_row = 24;
     }
 
-    while ((opt = getopt(argc, argv, "w:h:m:l:")) != -1)
+    while ((opt = getopt(argc, argv, "w:h:m:l:s")) != -1)
     {
         switch (opt)
         {
@@ -318,6 +436,9 @@ main(int argc, char **argv)
             case 'l':
                 highlight_locations = optarg;
                 break;
+            case 's':
+                s.sun.active = 1;
+                break;
             default:
                 exit(EXIT_FAILURE);
         }
@@ -330,6 +451,8 @@ main(int argc, char **argv)
     if (highlight_locations != NULL)
         if (!screen_mark_locations(&s, highlight_locations))
             exit(EXIT_FAILURE);
+    if (s.sun.active)
+        screen_mark_sun(&s);
     screen_show_interpreted(&s);
 
     exit(EXIT_SUCCESS);

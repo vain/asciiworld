@@ -30,15 +30,17 @@ Command line options
     50 8
     -33.9 18.4
 
+`-s`: Turn on "day-and-night" mode. Areas that are currently lit by the sun will be shown as yellow, whereas the other parts are shown as dark grey. The "position" of the sun itself will be marked with an "S".
+
 More ideas
 ==========
 
 *  Zoom/pan/crop.
 *  Highlight areas.
-*  Add a day-and-night mode.
 *  Highlight countries.
 
 CREDITS
 =======
 
 *  [Bresenham](https://de.wikipedia.org/wiki/Bresenham-Algorithmus#C-Implementierung)
+*  [Equation of time](http://lexikon.astronomie.info/zeitgleichung/)

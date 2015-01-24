@@ -1,0 +1,65 @@
+Horizontal
+----------
+
+Gesucht ist zunächst der Längengrad (also horizontale Richtung), bei dem
+die Sonne gerade den Tageshöchststand erreicht hat. Es wird angenommen,
+dass um 12:00 UTC dies beim nullten Längengrad der Fall ist. Die
+Abweichung durch die Zeitgleichung wird zunächst nicht berücksichtigt.
+
+Testweise an der Shell:
+
+$ date -u '+%H %M %S' | awk '{ print (($1 * 60 * 60 + $2 * 60 + $3) - (86400 / 2)) * (-360 / 86400) }'
+
+Erklärung:
+
+(($1 * 60 * 60 + $2 * 60 + $3) - (86400 / 2)) * (-360 / 86400)
+  |              |         |     \_________/    \____________/
+  |              |         |          |                |
+  |              |         |          |                \- Grad pro
+  |              |         |          |                   Sekunde.
+  |              |         |          |
+  |              |         |          \- Hierdurch Differenz zum UTC-
+  |              |         |             Mittag in Sekunden.
+  |              |         |
+  |              |         \- Sekunden der UTC-Zeit.
+  |              |
+  |              \- Minuten,
+  |
+  \- Stunden,
+
+
+Gute numerische Näherung der Zeitgleichung:
+	http://lexikon.astronomie.info/zeitgleichung/
+
+	WOZ - MOZ = -0.171*sin(0.0337 * T + 0.465) - 0.1299*sin(0.01787 * T - 0.168)
+
+	wobei T die Tagnummer darstellt. Der erste Januar hat die Nummer 1,
+	der zweite Januar die Nummer 2 usw. Das Ergebnis wird in Stunden
+	ausgegeben, und nicht etwa in Minuten.
+
+Man muss den UTC-Mittag also um diesen Wert korrigieren. An der Shell
+kann das dann so aussehen:
+
+$ date -u '+%H %M %S %j' | awk '{ print (($1 * 60 * 60 + $2 * 60 + $3) - (86400 / 2 + ((-0.171 * sin(0.0337 * $4 + 0.465) - 0.1299 * sin(0.01787 * $4 - 0.168)) * -3600))) * (-360 / 86400) }'
+
+Und für das konkrete Beispiel, was in der Wikipedia angegeben wurde
+(https://de.wikipedia.org/wiki/Mittag), es kommt also korrekterweise die
+geographische Länge von München heraus:
+
+$ date -d '2008-07-12 13:19 CEST' -u '+%H %M %S %j' | awk '{ print (($1 * 60 * 60 + $2 * 60 + $3) - (86400 / 2 + ((-0.171 * sin(0.0337 * $4 + 0.465) - 0.1299 * sin(0.01787 * $4 - 0.168)) * -3600))) * (-360 / 86400) }'
+11.6356
+
+
+
+Vertikal
+--------
+
+Das Astronomie-Lexikon hat hier wieder eine schöne Näherung:
+
+	Deklination = 0.4095 * sin(0.016906 * (T - 80.086))
+
+T ist wieder der Tag des Jahres. Im Laufe eines Tages ist die Schwankung
+so gering, dass das wie bei der Zeitgleichung ausreicht.
+
+Das ist auch gleichzeitig die geographische Breite, bei der die Sonne am
+"heutigen" Mittag im Zenith stehen wird.
