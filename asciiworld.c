@@ -263,8 +263,6 @@ screen_draw_line_projected(struct screen *s, int lon1, int lat1, int lon2, int l
 {
     double x1, y1, x2, y2;
 
-    /* y is flipped */
-
     x1 = project_x(s, lon1);
     y1 = project_y(s, lat1);
     x2 = project_x(s, lon2);
@@ -330,13 +328,12 @@ screen_draw_map(struct screen *s, char *file)
         {
             if (p < o->nParts && v == o->panPartStart[p])
             {
-                /* Start of part "p" */
+                /* Start of part number "p" */
                 isFirst = 1;
                 p++;
             }
             if (!isFirst)
             {
-                /* y is flipped */
                 screen_draw_line_projected(s, lon1, lat1, o->padfX[v], o->padfY[v]);
             }
             lon1 = o->padfX[v];
