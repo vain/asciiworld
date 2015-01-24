@@ -115,7 +115,7 @@ screen_init(struct screen *s, int width, int height)
 }
 
 void
-screen_show_interpreted(struct screen *s)
+screen_show_interpreted(struct screen *s, int trailing_newline)
 {
     int x, y, sun_found;
     char a, b, c, d;
@@ -194,7 +194,8 @@ screen_show_interpreted(struct screen *s)
                 }
             }
         }
-        printf("\n");
+        if (trailing_newline || y + 1 < s->height - 1)
+            printf("\n");
     }
 }
 
@@ -404,6 +405,7 @@ main(int argc, char **argv)
 {
     struct screen s;
     struct winsize w;
+    int trailing_newline = 1;
     int opt;
     char *map = "ne_110m_land.shp";
     char *highlight_locations = NULL;
@@ -420,7 +422,7 @@ main(int argc, char **argv)
         w.ws_row = 24;
     }
 
-    while ((opt = getopt(argc, argv, "w:h:m:l:s")) != -1)
+    while ((opt = getopt(argc, argv, "w:h:m:l:sT")) != -1)
     {
         switch (opt)
         {
@@ -439,6 +441,9 @@ main(int argc, char **argv)
             case 's':
                 s.sun.active = 1;
                 break;
+            case 'T':
+                trailing_newline = 0;
+                break;
             default:
                 exit(EXIT_FAILURE);
         }
@@ -453,7 +458,7 @@ main(int argc, char **argv)
             exit(EXIT_FAILURE);
     if (s.sun.active)
         screen_mark_sun(&s);
-    screen_show_interpreted(&s);
+    screen_show_interpreted(&s, trailing_newline);
 
     exit(EXIT_SUCCESS);
 }

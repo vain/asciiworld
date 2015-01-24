@@ -32,6 +32,10 @@ Command line options
 
 `-s`: Turn on "day-and-night" mode. Areas that are currently lit by the sun will be shown as yellow, whereas the other parts are shown as dark grey. The "position" of the sun itself will be marked with an "S".
 
+`-T`: Do not print the final newline to avoid scrolling. Using `-sT`, you can show a continuously updated map in "day-and-night" mode:
+
+    tput civis; while ./asciiworld -sT; do sleep 5; tput home; done
+
 More ideas
 ==========
 
