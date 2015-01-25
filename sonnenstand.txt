@@ -63,3 +63,28 @@ so gering, dass das wie bei der Zeitgleichung ausreicht.
 
 Das ist auch gleichzeitig die geographische Breite, bei der die Sonne am
 "heutigen" Mittag im Zenith stehen wird.
+
+
+
+Licht-Schatten-Grenze
+---------------------
+
+Bei der ganzen Aktion wird angenommen, dass die Sonne paralleles Licht
+auf eine kugelförmige Erde wirft. Das heißt, dass genau eine Kugelhälfte
+beleuchtet ist.
+
+Geht man (im Winter) von dem Punkt, an dem die Sonne gerade im Zenith
+steht, 90° nach Norden, so erreicht man einen Punkt auf dem Großkreis,
+der die beleuchtete und unbeleuchtete Hälfte der Erde trennt. Es ist
+außerdem der nordpolnächste Punkt auf diesem Großkreis. Mit diesem Punkt
+als Grundlage ist der Großkreis parametrisierbar (siehe Bronstein, 6.
+Auflage, 3.204, Seite 179) und zwar praktischerweise in
+Kugelkoordinaten.
+
+(Eine theoretische Alternative wäre gewesen, diesen Großkreis in
+kartesischen Koordinaten zu berechnen. In der Praxis ist das durch die
+Umrechnungen von Kugelkoordinaten zu kartesischen Koordinaten und zurück
+sehr umständlich.)
+
+Durch die Periodizität der verwendeten Funktionen funktioniert das Ganze
+zu anderen Jahreszeiten genauso.

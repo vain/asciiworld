@@ -7,15 +7,19 @@
 #include <time.h>
 #include <unistd.h>
 
+#define PIXEL_AUTO (-1)
 #define PIXEL_NORMAL 1
 #define PIXEL_HIGHLIGHT 2
 #define PIXEL_DARK 3
 #define PIXEL_SUN 4
+#define PIXEL_SUN_BORDER 5
 
 struct screen
 {
     int width, height;
     char *data;
+
+    int brush_color;
 
     struct sun
     {
@@ -78,6 +82,9 @@ decide_shade(struct screen *s, int x, int y)
     double px, py, pz;
     double sp;
 
+    if (s->brush_color != PIXEL_AUTO)
+        return s->brush_color;
+
     if (!s->sun.active)
         return PIXEL_NORMAL;
 
@@ -111,6 +118,7 @@ screen_init(struct screen *s, int width, int height)
         fprintf(stderr, "Out of memory in screen_init()\n");
         return 0;
     }
+    s->brush_color = PIXEL_AUTO;
     return 1;
 }
 
@@ -144,6 +152,9 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                         sun_found = 1;
                         printf("\033[36;1mS\033[0m");
                     }
+                    else if (a == PIXEL_SUN_BORDER || b == PIXEL_SUN_BORDER ||
+                             c == PIXEL_SUN_BORDER || d == PIXEL_SUN_BORDER)
+                        printf("\033[36;1m");
                     else if (a == PIXEL_DARK || b == PIXEL_DARK ||
                              c == PIXEL_DARK || d == PIXEL_DARK)
                         printf("\033[30;1m");
@@ -283,9 +294,6 @@ screen_draw_map(struct screen *s, char *file)
     SHPHandle h;
     SHPObject *o;
 
-    if (s->sun.active)
-        calc_sun(&s->sun);
-
     h = SHPOpen(file, "rb");
     if (h == NULL)
     {
@@ -397,6 +405,41 @@ screen_mark_sun(struct screen *s)
     s->data[(int)y * s->width + (int)x] = PIXEL_SUN;
 }
 
+void
+screen_mark_sun_border(struct screen *s)
+{
+    double phi_n, lambda_n;
+    double phi1, lambda1, phi2, lambda2;
+    int i, steps = 128;
+
+    s->brush_color = PIXEL_SUN_BORDER;
+
+    /* Again, see german notes in "sonnenstand.txt". */
+
+    phi_n = (s->sun.lat + 90) * M_PI / 180;
+    lambda_n = s->sun.lon * M_PI / 180;
+
+    for (i = 0; i < steps - 1; i++)
+    {
+        /* It's sunday, I'm lazy today. Just calc both points and let
+         * the compiler optimize the "i" and "i + 1" stuff. */
+
+        lambda1 = (double)i / steps * 2 * M_PI - M_PI;
+        phi1 = atan(tan(phi_n) * cos(lambda1 - lambda_n));
+
+        lambda2 = (double)(i + 1) / steps * 2 * M_PI - M_PI;
+        phi2 = atan(tan(phi_n) * cos(lambda2 - lambda_n));
+
+        screen_draw_line_projected(s,
+                                   lambda1 * 180 / M_PI,
+                                   phi1 * 180 / M_PI,
+                                   lambda2 * 180 / M_PI,
+                                   phi2 * 180 / M_PI);
+    }
+
+    s->brush_color = PIXEL_AUTO;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -446,10 +489,14 @@ main(int argc, char **argv)
         }
     }
 
+    if (s.sun.active)
+        calc_sun(&s.sun);
     if (!screen_init(&s, 2 * w.ws_col, 2 * w.ws_row))
         exit(EXIT_FAILURE);
     if (!screen_draw_map(&s, map))
         exit(EXIT_FAILURE);
+    if (s.sun.active)
+        screen_mark_sun_border(&s);
     if (highlight_locations != NULL)
         if (!screen_mark_locations(&s, highlight_locations))
             exit(EXIT_FAILURE);
