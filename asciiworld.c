@@ -7,7 +7,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#define PIXEL_AUTO (-1)
 #define PIXEL_NORMAL 1
 #define PIXEL_HIGHLIGHT 2
 #define PIXEL_DARK 3
@@ -40,18 +39,6 @@ project_y(struct screen *s, double lat)
     return (180 - (lat + 90)) / 180 * s->height;
 }
 
-double
-unproject_x(struct screen *s, double x)
-{
-    return (x * 360) / s->width - 180;
-}
-
-double
-unproject_y(struct screen *s, double y)
-{
-    return 90 - (y * 180) / s->height;
-}
-
 void
 calc_sun(struct sun *sun)
 {
@@ -70,30 +57,43 @@ calc_sun(struct sun *sun)
 }
 
 char
-decide_shade(struct screen *s, int x, int y)
+decide_shade(struct screen *s, double lon1, double lat1, double lon2, double lat2)
 {
-    double pphi, plambda, sphi, slambda;
-    double zeta;
-
-    if (s->brush_color != PIXEL_AUTO)
-        return s->brush_color;
+    double phi1, lambda1, phi2, lambda2, phi_sun, lambda_sun;
+    double zeta1, zeta2;
 
     if (!s->sun.active)
         return PIXEL_NORMAL;
 
-    /* Unproject the pixel and use the Great Circle Distance to
-     * determine on which side of the earth (lit or unlit) this pixel
-     * lies. */
+    /* We're dealing with two points on the sphere here. This is kind of
+     * a problem because those two points might not be close to each
+     * other and thus create a long line. How shall we color that line?
+     * We don't know anything about the points/pixels between the two
+     * given points.
+     *
+     * (This problem exists in the line drawing algorithm as well: Only
+     * two points actually get projected instead of EVERY point on the
+     * line.)
+     *
+     * To decide the color of the resulting LINE, we use the Great
+     * Circle Distance. We do this for both points and decide based on
+     * the average distance. */
 
-    plambda = unproject_x(s, x) * M_PI / 180;
-    pphi = unproject_y(s, y) * M_PI / 180;
+    lambda1 = lon1 * M_PI / 180;
+    phi1 = lat1 * M_PI / 180;
 
-    slambda = s->sun.lon * M_PI / 180;
-    sphi = s->sun.lat * M_PI / 180;
+    lambda2 = lon2 * M_PI / 180;
+    phi2 = lat2 * M_PI / 180;
 
-    zeta = acos(sin(sphi) * sin(pphi) + cos(sphi) * cos(pphi) * cos(plambda - slambda));
+    lambda_sun = s->sun.lon * M_PI / 180;
+    phi_sun = s->sun.lat * M_PI / 180;
 
-    if (zeta > 0.5 * M_PI)
+    zeta1 = acos(sin(phi_sun) * sin(phi1) +
+                 cos(phi_sun) * cos(phi1) * cos(lambda1 - lambda_sun));
+    zeta2 = acos(sin(phi_sun) * sin(phi2) +
+                 cos(phi_sun) * cos(phi2) * cos(lambda2 - lambda_sun));
+
+    if (zeta1 + (zeta2 - zeta1) * 0.5 > 90 * M_PI / 180)
         return PIXEL_DARK;
     else
         return PIXEL_NORMAL;
@@ -110,7 +110,7 @@ screen_init(struct screen *s, int width, int height)
         fprintf(stderr, "Out of memory in screen_init()\n");
         return 0;
     }
-    s->brush_color = PIXEL_AUTO;
+    s->brush_color = PIXEL_NORMAL;
     return 1;
 }
 
@@ -241,7 +241,7 @@ screen_draw_line(struct screen *s, int x1, int y1, int x2, int y2)
     x = x1;
     y = y1;
     err = el / 2;
-    screen_set_pixel(s, x, y, decide_shade(s, x, y));
+    screen_set_pixel(s, x, y, s->brush_color);
 
     for (t = 0; t < el; t++)
     {
@@ -257,7 +257,7 @@ screen_draw_line(struct screen *s, int x1, int y1, int x2, int y2)
             x += pdx;
             y += pdy;
         }
-        screen_set_pixel(s, x, y, decide_shade(s, x, y));
+        screen_set_pixel(s, x, y, s->brush_color);
     }
 }
 
@@ -334,6 +334,7 @@ screen_draw_map(struct screen *s, char *file)
             }
             if (!isFirst)
             {
+                s->brush_color = decide_shade(s, lon1, lat1, o->padfX[v], o->padfY[v]);
                 screen_draw_line_projected(s, lon1, lat1, o->padfX[v], o->padfY[v]);
             }
             lon1 = o->padfX[v];
@@ -428,8 +429,6 @@ screen_mark_sun_border(struct screen *s)
                                    lambda2 * 180 / M_PI,
                                    phi2 * 180 / M_PI);
     }
-
-    s->brush_color = PIXEL_AUTO;
 }
 
 int
