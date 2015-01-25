@@ -12,12 +12,14 @@
 #define PIXEL_DARK 3
 #define PIXEL_SUN 4
 #define PIXEL_SUN_BORDER 5
+#define PIXEL_LINE 6
 
 struct screen
 {
     int width, height;
     char *data;
 
+    int world_border;
     int brush_color;
 
     void (* project)(struct screen *s, double lon, double lat, double *x, double *y);
@@ -131,6 +133,7 @@ screen_init(struct screen *s)
     s->brush_color = PIXEL_NORMAL;
     s->project = project_equirect;
     s->sun.active = 0;
+    s->world_border = 0;
 }
 
 int
@@ -189,6 +192,10 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
 
                 if (!sun_found)
                 {
+                    if (a == PIXEL_LINE || b == PIXEL_LINE ||
+                        c == PIXEL_LINE || d == PIXEL_LINE)
+                        printf("\033[37m");
+
                     if (!a && !b && !c && !d)
                         printf(" ");
 
@@ -460,6 +467,50 @@ screen_mark_sun_border(struct screen *s)
     }
 }
 
+void
+screen_draw_world_border(struct screen *s)
+{
+    int i, steps = 128;
+
+    s->brush_color = PIXEL_LINE;
+
+    for (i = 0; i < steps - 1; i++)
+    {
+        screen_draw_line_projected(s,
+                                   -179.99999,
+                                   (double)i / steps * 180 - 90,
+                                   -179.99999,
+                                   (double)(i + 1) / steps * 180 - 90);
+    }
+
+    for (i = 0; i < steps - 1; i++)
+    {
+        screen_draw_line_projected(s,
+                                   179.99999,
+                                   (double)i / steps * 180 - 90,
+                                   179.99999,
+                                   (double)(i + 1) / steps * 180 - 90);
+    }
+
+    for (i = 0; i < steps - 1; i++)
+    {
+        screen_draw_line_projected(s,
+                                   (double)i / steps * 360 - 180,
+                                   -89.99999,
+                                   (double)(i + 1) / steps * 360 - 180,
+                                   -89.99999);
+    }
+
+    for (i = 0; i < steps - 1; i++)
+    {
+        screen_draw_line_projected(s,
+                                   (double)i / steps * 360 - 180,
+                                   89.99999,
+                                   (double)(i + 1) / steps * 360 - 180,
+                                   89.99999);
+    }
+}
+
 int
 main(int argc, char **argv)
 {
@@ -480,7 +531,7 @@ main(int argc, char **argv)
 
     screen_init(&s);
 
-    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:")) != -1)
+    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:b")) != -1)
     {
         switch (opt)
         {
@@ -508,6 +559,9 @@ main(int argc, char **argv)
                 else if (strncmp(optarg, "lam", 3) == 0)
                     s.project = project_lambert;
                 break;
+            case 'b':
+                s.world_border = 1;
+                break;
             default:
                 exit(EXIT_FAILURE);
         }
@@ -521,6 +575,8 @@ main(int argc, char **argv)
         exit(EXIT_FAILURE);
     if (s.sun.active)
         screen_mark_sun_border(&s);
+    if (s.world_border)
+        screen_draw_world_border(&s);
     if (highlight_locations != NULL)
         if (!screen_mark_locations(&s, highlight_locations))
             exit(EXIT_FAILURE);

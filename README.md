@@ -41,6 +41,8 @@ Command line options
 *  `kav`: Kavrayskiy VII
 *  `lam`: Lambert cylindrical equal-area
 
+`-b`: Draw a border around the projected world. This can be useful for some projections.
+
 More ideas
 ==========
 
