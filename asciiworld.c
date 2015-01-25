@@ -21,6 +21,7 @@ struct screen
 
     int world_border;
     int brush_color;
+    int disable_colors;
 
     void (* project)(struct screen *s, double lon, double lat, double *x, double *y);
 
@@ -134,6 +135,7 @@ screen_init(struct screen *s)
     s->project = project_equirect;
     s->sun.active = 0;
     s->world_border = 0;
+    s->disable_colors = 0;
 }
 
 int
@@ -148,6 +150,13 @@ screen_init_data(struct screen *s, int width, int height)
         return 0;
     }
     return 1;
+}
+
+void
+print_color(struct screen *s, char *str)
+{
+    if (!s->disable_colors)
+        printf("%s", str);
 }
 
 void
@@ -167,7 +176,11 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
 
             if (a == PIXEL_HIGHLIGHT || b == PIXEL_HIGHLIGHT ||
                 c == PIXEL_HIGHLIGHT || d == PIXEL_HIGHLIGHT)
-                printf("\033[31;1mX\033[0m");
+            {
+                print_color(s, "\033[31;1m");
+                printf("X");
+                print_color(s, "\033[0m");
+            }
             else
             {
                 sun_found = 0;
@@ -178,16 +191,18 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                         c == PIXEL_SUN || d == PIXEL_SUN)
                     {
                         sun_found = 1;
-                        printf("\033[36mS\033[0m");
+                        print_color(s, "\033[36m");
+                        printf("S");
+                        print_color(s, "\033[0m");
                     }
                     else if (a == PIXEL_SUN_BORDER || b == PIXEL_SUN_BORDER ||
                              c == PIXEL_SUN_BORDER || d == PIXEL_SUN_BORDER)
-                        printf("\033[36m");
+                        print_color(s, "\033[36m");
                     else if (a == PIXEL_DARK || b == PIXEL_DARK ||
                              c == PIXEL_DARK || d == PIXEL_DARK)
-                        printf("\033[30;1m");
+                        print_color(s, "\033[30;1m");
                     else
-                        printf("\033[33;1m");
+                        print_color(s, "\033[33;1m");
                 }
 
                 if (!sun_found)
@@ -198,7 +213,7 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                         c == PIXEL_LINE || d == PIXEL_LINE)
                     {
                         is_line = 1;
-                        printf("\033[0m\033[37m");
+                        print_color(s, "\033[0m\033[37m");
                     }
 
                     if (!a && !b && !c && !d)
@@ -238,7 +253,7 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                         printf("#");
 
                     if (s->sun.active || is_line)
-                        printf("\033[0m");
+                        print_color(s, "\033[0m");
                 }
             }
         }
@@ -536,7 +551,7 @@ main(int argc, char **argv)
 
     screen_init(&s);
 
-    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:b")) != -1)
+    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bC")) != -1)
     {
         switch (opt)
         {
@@ -566,6 +581,9 @@ main(int argc, char **argv)
                 break;
             case 'b':
                 s.world_border = 1;
+                break;
+            case 'C':
+                s.disable_colors = 1;
                 break;
             default:
                 exit(EXIT_FAILURE);

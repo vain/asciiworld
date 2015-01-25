@@ -43,6 +43,8 @@ Command line options
 
 `-b`: Draw a border around the projected world. This can be useful for some projections.
 
+`-C`: Disable colors.
+
 More ideas
 ==========
 
