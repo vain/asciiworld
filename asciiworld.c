@@ -25,7 +25,6 @@ struct screen
     {
         int active;
         double lon, lat;
-        double x, y, z;
     } sun;
 };
 
@@ -68,19 +67,13 @@ calc_sun(struct sun *sun)
                  0.1299 * sin(0.01787 * (utc.tm_yday + 1) - 0.168)) * -3600))) *
                (-360.0 / 86400);
     sun->lat = 0.4095 * sin(0.016906 * ((utc.tm_yday + 1) - 80.086)) * 180 / M_PI;
-
-    /* Precalc cartesian coordinates. */
-    sun->x = sin((sun->lat + 90) * M_PI / 180) * cos(sun->lon * M_PI / 180);
-    sun->y = sin((sun->lat + 90) * M_PI / 180) * sin(sun->lon * M_PI / 180);
-    sun->z = cos((sun->lat + 90) * M_PI / 180);
 }
 
 char
 decide_shade(struct screen *s, int x, int y)
 {
-    double lon, lat;
-    double px, py, pz;
-    double sp;
+    double pphi, plambda, sphi, slambda;
+    double zeta;
 
     if (s->brush_color != PIXEL_AUTO)
         return s->brush_color;
@@ -88,20 +81,19 @@ decide_shade(struct screen *s, int x, int y)
     if (!s->sun.active)
         return PIXEL_NORMAL;
 
-    /* Unproject the point, calc cartesian coordinates of it and then
-     * use the scalar product to determine whether this point lies on
-     * the same half of the earth as the "sun point". */
+    /* Unproject the pixel and use the Great Circle Distance to
+     * determine on which side of the earth (lit or unlit) this pixel
+     * lies. */
 
-    lon = unproject_x(s, x);  /* phi */
-    lat = unproject_y(s, y);  /* theta */
+    plambda = unproject_x(s, x) * M_PI / 180;
+    pphi = unproject_y(s, y) * M_PI / 180;
 
-    px = sin((lat + 90) * M_PI / 180) * cos(lon * M_PI / 180);
-    py = sin((lat + 90) * M_PI / 180) * sin(lon * M_PI / 180);
-    pz = cos((lat + 90) * M_PI / 180);
+    slambda = s->sun.lon * M_PI / 180;
+    sphi = s->sun.lat * M_PI / 180;
 
-    sp = px * s->sun.x + py * s->sun.y + pz * s->sun.z;
+    zeta = acos(sin(sphi) * sin(pphi) + cos(sphi) * cos(pphi) * cos(plambda - slambda));
 
-    if (sp < 0)
+    if (zeta > 0.5 * M_PI)
         return PIXEL_DARK;
     else
         return PIXEL_NORMAL;
