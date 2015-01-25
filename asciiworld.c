@@ -448,7 +448,7 @@ screen_mark_sun_border(struct screen *s)
     phi_n = (s->sun.lat + 90) * M_PI / 180;
     lambda_n = s->sun.lon * M_PI / 180;
 
-    for (i = 0; i < steps - 1; i++)
+    for (i = 0; i < steps; i++)
     {
         /* It's sunday, I'm lazy today. Just calc both points and let
          * the compiler optimize the "i" and "i + 1" stuff. */
@@ -474,7 +474,7 @@ screen_draw_world_border(struct screen *s)
 
     s->brush_color = PIXEL_LINE;
 
-    for (i = 0; i < steps - 1; i++)
+    for (i = 0; i < steps; i++)
     {
         screen_draw_line_projected(s,
                                    -179.99999,
@@ -483,7 +483,7 @@ screen_draw_world_border(struct screen *s)
                                    (double)(i + 1) / steps * 180 - 90);
     }
 
-    for (i = 0; i < steps - 1; i++)
+    for (i = 0; i < steps; i++)
     {
         screen_draw_line_projected(s,
                                    179.99999,
@@ -492,7 +492,7 @@ screen_draw_world_border(struct screen *s)
                                    (double)(i + 1) / steps * 180 - 90);
     }
 
-    for (i = 0; i < steps - 1; i++)
+    for (i = 0; i < steps; i++)
     {
         screen_draw_line_projected(s,
                                    (double)i / steps * 360 - 180,
@@ -501,7 +501,7 @@ screen_draw_world_border(struct screen *s)
                                    -89.99999);
     }
 
-    for (i = 0; i < steps - 1; i++)
+    for (i = 0; i < steps; i++)
     {
         screen_draw_line_projected(s,
                                    (double)i / steps * 360 - 180,
