@@ -20,6 +20,8 @@ struct screen
 
     int brush_color;
 
+    void (* project)(struct screen *s, double lon, double lat, double *x, double *y);
+
     struct sun
     {
         int active;
@@ -28,7 +30,36 @@ struct screen
 };
 
 void
-project(struct screen *s, double lon, double lat, double *x, double *y)
+project_kavrayskiy(struct screen *s, double lon, double lat, double *x, double *y)
+{
+    double lonr = lon * M_PI / 180;
+    double latr = lat * M_PI / 180;
+
+    /* Actual projection. */
+    *x = 3.0 / 2 * lonr * sqrt(1.0 / 3 - (latr / M_PI) * (latr / M_PI));
+    *y = lat;
+
+    /* Scale to our screen. */
+    *x *= 180 / M_PI;
+    *x = (*x + 180) / 360 * s->width;
+    *y = (180 - (*y + 90)) / 180 * s->height;
+}
+
+void
+project_lambert(struct screen *s, double lon, double lat, double *x, double *y)
+{
+    /* Actual projection. */
+    *x = lon;
+    *y = sin(lat * M_PI / 180);
+
+    /* Scale to our screen. */
+    *x = (*x + 180) / 360 * s->width;
+    *y *= 90;
+    *y = (180 - (*y + 90)) / 180 * s->height;
+}
+
+void
+project_equirect(struct screen *s, double lon, double lat, double *x, double *y)
 {
     *x = (lon + 180) / 360 * s->width;
     *y = (180 - (lat + 90)) / 180 * s->height;
@@ -94,8 +125,15 @@ decide_shade(struct screen *s, double lon1, double lat1, double lon2, double lat
         return PIXEL_NORMAL;
 }
 
+void
+screen_init(struct screen *s)
+{
+    s->brush_color = PIXEL_NORMAL;
+    s->project = project_equirect;
+}
+
 int
-screen_init(struct screen *s, int width, int height)
+screen_init_data(struct screen *s, int width, int height)
 {
     s->width = width;
     s->height = height;
@@ -105,7 +143,6 @@ screen_init(struct screen *s, int width, int height)
         fprintf(stderr, "Out of memory in screen_init()\n");
         return 0;
     }
-    s->brush_color = PIXEL_NORMAL;
     return 1;
 }
 
@@ -261,8 +298,8 @@ screen_draw_line_projected(struct screen *s, int lon1, int lat1, int lon2, int l
 {
     double x1, y1, x2, y2;
 
-    project(s, lon1, lat1, &x1, &y1);
-    project(s, lon2, lat2, &x2, &y2);
+    (s->project)(s, lon1, lat1, &x1, &y1);
+    (s->project)(s, lon2, lat2, &x2, &y2);
 
     if ((int)x1 == (int)x2 && (int)y1 == (int)y2)
         return;
@@ -368,7 +405,7 @@ screen_mark_locations(struct screen *s, char *file)
 
         if (scanret == 2)
         {
-            project(s, lon, lat, &sx, &sy);
+            (s->project)(s, lon, lat, &sx, &sy);
 
             s->data[(int)sy * s->width + (int)sx] = PIXEL_HIGHLIGHT;
         }
@@ -384,7 +421,7 @@ screen_mark_sun(struct screen *s)
 {
     double x, y;
 
-    project(s, s->sun.lon, s->sun.lat, &x, &y);
+    (s->project)(s, s->sun.lon, s->sun.lat, &x, &y);
 
     s->data[(int)y * s->width + (int)x] = PIXEL_SUN;
 }
@@ -444,7 +481,9 @@ main(int argc, char **argv)
         w.ws_row = 24;
     }
 
-    while ((opt = getopt(argc, argv, "w:h:m:l:sT")) != -1)
+    screen_init(&s);
+
+    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:")) != -1)
     {
         switch (opt)
         {
@@ -466,6 +505,12 @@ main(int argc, char **argv)
             case 'T':
                 trailing_newline = 0;
                 break;
+            case 'p':
+                if (strncmp(optarg, "kav", 3) == 0)
+                    s.project = project_kavrayskiy;
+                else if (strncmp(optarg, "lam", 3) == 0)
+                    s.project = project_lambert;
+                break;
             default:
                 exit(EXIT_FAILURE);
         }
@@ -473,7 +518,7 @@ main(int argc, char **argv)
 
     if (s.sun.active)
         calc_sun(&s.sun);
-    if (!screen_init(&s, 2 * w.ws_col, 2 * w.ws_row))
+    if (!screen_init_data(&s, 2 * w.ws_col, 2 * w.ws_row))
         exit(EXIT_FAILURE);
     if (!screen_draw_map(&s, map))
         exit(EXIT_FAILURE);

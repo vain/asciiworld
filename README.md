@@ -36,6 +36,11 @@ Command line options
 
     tput civis; while ./asciiworld -sT; do sleep 5; tput home; done
 
+`-p proj`: Choose projection. By default, a trivial equirectanguar projection will be used. The following other projections are available:
+
+*  `kav`: Kavrayskiy VII
+*  `lam`: Lambert cylindrical equal-area
+
 More ideas
 ==========
 
