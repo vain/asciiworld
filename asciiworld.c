@@ -130,6 +130,7 @@ screen_init(struct screen *s)
 {
     s->brush_color = PIXEL_NORMAL;
     s->project = project_equirect;
+    s->sun.active = 0;
 }
 
 int
@@ -469,12 +470,8 @@ main(int argc, char **argv)
     char *map = "ne_110m_land.shp";
     char *highlight_locations = NULL;
 
-    s.sun.active = 0;
-
     if (isatty(STDOUT_FILENO))
-    {
         ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-    }
     else
     {
         w.ws_col = 80;
