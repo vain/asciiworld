@@ -14,6 +14,9 @@
 #define PIXEL_SUN_BORDER 5
 #define PIXEL_LINE 6
 
+#define DEG_2_RAD (M_PI / 180.0)
+#define RAD_2_DEG (180.0 / M_PI)
+
 struct screen
 {
     int width, height;
@@ -35,15 +38,15 @@ struct screen
 void
 project_kavrayskiy(struct screen *s, double lon, double lat, double *x, double *y)
 {
-    double lonr = lon * M_PI / 180;
-    double latr = lat * M_PI / 180;
+    double lonr = lon * DEG_2_RAD;
+    double latr = lat * DEG_2_RAD;
 
     /* Actual projection. */
     *x = 3.0 / 2 * lonr * sqrt(1.0 / 3 - (latr / M_PI) * (latr / M_PI));
     *y = lat;
 
     /* Scale to our screen. */
-    *x *= 180 / M_PI;
+    *x *= RAD_2_DEG;
     *x = (*x + 180) / 360 * s->width;
     *y = (180 - (*y + 90)) / 180 * s->height;
 }
@@ -53,7 +56,7 @@ project_lambert(struct screen *s, double lon, double lat, double *x, double *y)
 {
     /* Actual projection. */
     *x = lon;
-    *y = sin(lat * M_PI / 180);
+    *y = sin(lat * DEG_2_RAD);
 
     /* Scale to our screen. */
     *x = (*x + 180) / 360 * s->width;
@@ -82,7 +85,7 @@ calc_sun(struct sun *sun)
                 (86400.0 / 2 + ((-0.171 * sin(0.0337 * (utc.tm_yday + 1) + 0.465) -
                  0.1299 * sin(0.01787 * (utc.tm_yday + 1) - 0.168)) * -3600))) *
                (-360.0 / 86400);
-    sun->lat = 0.4095 * sin(0.016906 * ((utc.tm_yday + 1) - 80.086)) * 180 / M_PI;
+    sun->lat = 0.4095 * sin(0.016906 * ((utc.tm_yday + 1) - 80.086)) * RAD_2_DEG;
 }
 
 char
@@ -108,21 +111,21 @@ decide_shade(struct screen *s, double lon1, double lat1, double lon2, double lat
      * Circle Distance. We do this for both points and decide based on
      * the average distance. */
 
-    lambda1 = lon1 * M_PI / 180;
-    phi1 = lat1 * M_PI / 180;
+    lambda1 = lon1 * DEG_2_RAD;
+    phi1 = lat1 * DEG_2_RAD;
 
-    lambda2 = lon2 * M_PI / 180;
-    phi2 = lat2 * M_PI / 180;
+    lambda2 = lon2 * DEG_2_RAD;
+    phi2 = lat2 * DEG_2_RAD;
 
-    lambda_sun = s->sun.lon * M_PI / 180;
-    phi_sun = s->sun.lat * M_PI / 180;
+    lambda_sun = s->sun.lon * DEG_2_RAD;
+    phi_sun = s->sun.lat * DEG_2_RAD;
 
     zeta1 = acos(sin(phi_sun) * sin(phi1) +
                  cos(phi_sun) * cos(phi1) * cos(lambda1 - lambda_sun));
     zeta2 = acos(sin(phi_sun) * sin(phi2) +
                  cos(phi_sun) * cos(phi2) * cos(lambda2 - lambda_sun));
 
-    if (zeta1 + (zeta2 - zeta1) * 0.5 > 90 * M_PI / 180)
+    if (zeta1 + (zeta2 - zeta1) * 0.5 > 90 * DEG_2_RAD)
         return PIXEL_DARK;
     else
         return PIXEL_NORMAL;
@@ -465,8 +468,8 @@ screen_mark_sun_border(struct screen *s)
 
     /* Again, see german notes in "sonnenstand.txt". */
 
-    phi_n = (s->sun.lat + 90) * M_PI / 180;
-    lambda_n = s->sun.lon * M_PI / 180;
+    phi_n = (s->sun.lat + 90) * DEG_2_RAD;
+    lambda_n = s->sun.lon * DEG_2_RAD;
 
     for (i = 0; i < steps; i++)
     {
@@ -480,10 +483,10 @@ screen_mark_sun_border(struct screen *s)
         phi2 = atan(tan(phi_n) * cos(lambda2 - lambda_n));
 
         screen_draw_line_projected(s,
-                                   lambda1 * 180 / M_PI,
-                                   phi1 * 180 / M_PI,
-                                   lambda2 * 180 / M_PI,
-                                   phi2 * 180 / M_PI);
+                                   lambda1 * RAD_2_DEG,
+                                   phi1 * RAD_2_DEG,
+                                   lambda2 * RAD_2_DEG,
+                                   phi2 * RAD_2_DEG);
     }
 }
 
