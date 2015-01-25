@@ -27,16 +27,11 @@ struct screen
     } sun;
 };
 
-double
-project_x(struct screen *s, double lon)
+void
+project(struct screen *s, double lon, double lat, double *x, double *y)
 {
-    return (lon + 180) / 360 * s->width;
-}
-
-double
-project_y(struct screen *s, double lat)
-{
-    return (180 - (lat + 90)) / 180 * s->height;
+    *x = (lon + 180) / 360 * s->width;
+    *y = (180 - (lat + 90)) / 180 * s->height;
 }
 
 void
@@ -266,10 +261,8 @@ screen_draw_line_projected(struct screen *s, int lon1, int lat1, int lon2, int l
 {
     double x1, y1, x2, y2;
 
-    x1 = project_x(s, lon1);
-    y1 = project_y(s, lat1);
-    x2 = project_x(s, lon2);
-    y2 = project_y(s, lat2);
+    project(s, lon1, lat1, &x1, &y1);
+    project(s, lon2, lat2, &x2, &y2);
 
     if ((int)x1 == (int)x2 && (int)y1 == (int)y2)
         return;
@@ -375,8 +368,7 @@ screen_mark_locations(struct screen *s, char *file)
 
         if (scanret == 2)
         {
-            sx = project_x(s, lon);
-            sy = project_y(s, lat);
+            project(s, lon, lat, &sx, &sy);
 
             s->data[(int)sy * s->width + (int)sx] = PIXEL_HIGHLIGHT;
         }
@@ -392,8 +384,7 @@ screen_mark_sun(struct screen *s)
 {
     double x, y;
 
-    x = project_x(s, s->sun.lon);
-    y = project_y(s, s->sun.lat);
+    project(s, s->sun.lon, s->sun.lat, &x, &y);
 
     s->data[(int)y * s->width + (int)x] = PIXEL_SUN;
 }
