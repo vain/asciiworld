@@ -150,16 +150,16 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                         c == PIXEL_SUN || d == PIXEL_SUN)
                     {
                         sun_found = 1;
-                        printf("\033[36;1mS\033[0m");
+                        printf("\033[36mS\033[0m");
                     }
                     else if (a == PIXEL_SUN_BORDER || b == PIXEL_SUN_BORDER ||
                              c == PIXEL_SUN_BORDER || d == PIXEL_SUN_BORDER)
-                        printf("\033[36;1m");
+                        printf("\033[36m");
                     else if (a == PIXEL_DARK || b == PIXEL_DARK ||
                              c == PIXEL_DARK || d == PIXEL_DARK)
                         printf("\033[30;1m");
                     else
-                        printf("\033[33m");
+                        printf("\033[33;1m");
                 }
 
                 if (!sun_found)
