@@ -153,7 +153,7 @@ screen_init_data(struct screen *s, int width, int height)
 void
 screen_show_interpreted(struct screen *s, int trailing_newline)
 {
-    int x, y, sun_found;
+    int x, y, sun_found, is_line;
     char a, b, c, d;
 
     for (y = 0; y < s->height - 1; y += 2)
@@ -192,9 +192,14 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
 
                 if (!sun_found)
                 {
+                    is_line = 0;
+
                     if (a == PIXEL_LINE || b == PIXEL_LINE ||
                         c == PIXEL_LINE || d == PIXEL_LINE)
-                        printf("\033[37m");
+                    {
+                        is_line = 1;
+                        printf("\033[0m\033[37m");
+                    }
 
                     if (!a && !b && !c && !d)
                         printf(" ");
@@ -232,7 +237,7 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                     else if ( a &&  b &&  c &&  d)
                         printf("#");
 
-                    if (s->sun.active)
+                    if (s->sun.active || is_line)
                         printf("\033[0m");
                 }
             }
