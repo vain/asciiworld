@@ -165,8 +165,10 @@ print_color(struct screen *s, char *str)
 void
 screen_show_interpreted(struct screen *s, int trailing_newline)
 {
-    int x, y, sun_found, is_line;
+    int x, y, sun_found, is_line, glyph;
     char a, b, c, d;
+    char *charset[] = {  " ",  ".",  ",",  "_",  "'",  "|",  "/",  "J",
+                         "`", "\\",  "|",  "L", "\"",  "7",  "r",  "#" };
 
     for (y = 0; y < s->height - 1; y += 2)
     {
@@ -219,41 +221,8 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                         print_color(s, "\033[0m\033[37m");
                     }
 
-                    if (!a && !b && !c && !d)
-                        printf(" ");
-
-                    else if (!a && !b && !c &&  d)
-                        printf(".");
-                    else if (!a && !b &&  c && !d)
-                        printf(",");
-                    else if (!a && !b &&  c &&  d)
-                        printf("_");
-                    else if (!a &&  b && !c && !d)
-                        printf("'");
-                    else if (!a &&  b && !c &&  d)
-                        printf("|");
-                    else if (!a &&  b &&  c && !d)
-                        printf("/");
-                    else if (!a &&  b &&  c &&  d)
-                        printf("J");
-
-                    else if ( a && !b && !c && !d)
-                        printf("`");
-                    else if ( a && !b && !c &&  d)
-                        printf("\\");
-                    else if ( a && !b &&  c && !d)
-                        printf("|");
-                    else if ( a && !b &&  c &&  d)
-                        printf("L");
-                    else if ( a &&  b && !c && !d)
-                        printf("\"");
-                    else if ( a &&  b && !c &&  d)
-                        printf("7");
-                    else if ( a &&  b &&  c && !d)
-                        printf("r");
-
-                    else if ( a &&  b &&  c &&  d)
-                        printf("#");
+                    glyph = (!!a << 3) | (!!b << 2) | (!!c << 1) | !!d;
+                    printf("%s", charset[glyph]);
 
                     if (s->sun.active || is_line)
                         print_color(s, "\033[0m");
