@@ -325,7 +325,8 @@ screen_draw_line(struct screen *s, int x1, int y1, int x2, int y2)
 }
 
 void
-screen_draw_line_projected(struct screen *s, int lon1, int lat1, int lon2, int lat2)
+screen_draw_line_projected(struct screen *s, double lon1, double lat1,
+                           double lon2, double lat2)
 {
     double x1, y1, x2, y2;
 
