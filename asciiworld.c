@@ -168,7 +168,7 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
     int x, y, sun_found, is_line, glyph;
     char a, b, c, d;
     char *charset[] = {  " ",  ".",  ",",  "_",  "'",  "|",  "/",  "J",
-                         "`", "\\",  "|",  "L", "\"",  "7",  "r",  "#" };
+                         "`", "\\",  "|",  "L", "\"",  "7",  "r",  "*" };
 
     for (y = 0; y < s->height - 1; y += 2)
     {
