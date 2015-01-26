@@ -462,8 +462,9 @@ void
 screen_mark_sun_border(struct screen *s)
 {
     double phi_n, lambda_n;
-    double phi1, lambda1, phi2, lambda2;
-    int i, steps = 128;
+    double phi1, lambda1, phi2, lambda2, iscaled;
+    double iscaled_smooth = 20;
+    int i, steps = 128, modif;
 
     s->brush_color = PIXEL_SUN_BORDER;
 
@@ -472,23 +473,84 @@ screen_mark_sun_border(struct screen *s)
     phi_n = (s->sun.lat + 90) * DEG_2_RAD;
     lambda_n = s->sun.lon * DEG_2_RAD;
 
-    for (i = 0; i < steps; i++)
-    {
-        /* It's sunday, I'm lazy today. Just calc both points and let
-         * the compiler optimize the "i" and "i + 1" stuff. */
+    /* Around March 20 and September 20, use the alternative
+     * parametrisation where we iterate over phi instead of lambda. */
+    if (s->sun.lat + 90 > 86 && s->sun.lat + 90 < 94)
+        for (modif = -1; modif <= 1; modif += 2)
+            for (i = 0; i < steps; i++)
+            {
+                /* Do not run iscaled from [0:1] linearly but create more
+                 * points close to 0 and close 1. Just plot this in gnuplot
+                 * to see what's going on here:
+                 *
+                 *   plot [0:1] 0.5 * (atan(32 * x - 16) / atan(16) + 1)
+                 */
+                iscaled = (double)i / steps;
+                iscaled = 0.5 * (atan(iscaled_smooth * iscaled - 0.5 * iscaled_smooth)
+                          / atan(0.5 * iscaled_smooth) + 1);
+                /* Run phi from phi_n to -phi_n (or the other way round). */
+                phi1 = iscaled * 2 * phi_n - phi_n;
+                /* Here, modif takes care of running in positive or negative
+                 * direction. Depending on that, we might have to flip
+                 * lambda. */
+                lambda1 = acos(tan(modif * phi1) / tan(phi_n)) + lambda_n;
+                lambda1 = modif == 1 ? lambda1 : lambda1 - M_PI;
 
-        lambda1 = (double)i / steps * 2 * M_PI - M_PI;
-        phi1 = atan(tan(phi_n) * cos(lambda1 - lambda_n));
+                /* Okay, now do that same thing but based on "i + 1" instead
+                 * of just "i". */
+                iscaled = (double)(i + 1) / steps;
+                iscaled = 0.5 * (atan(iscaled_smooth * iscaled - 0.5 * iscaled_smooth)
+                          / atan(0.5 * iscaled_smooth) + 1);
+                phi2 = iscaled * 2 * phi_n - phi_n;
+                lambda2 = acos(tan(modif * phi2) / tan(phi_n)) + lambda_n;
+                lambda2 = modif == 1 ? lambda2 : lambda2 - M_PI;
 
-        lambda2 = (double)(i + 1) / steps * 2 * M_PI - M_PI;
-        phi2 = atan(tan(phi_n) * cos(lambda2 - lambda_n));
+                /* Around the top/bottom, we might get NaNs. Skip those. */
+                if (isnan(lambda1) || isnan(lambda2))
+                    continue;
 
-        screen_draw_line_projected(s,
-                                   lambda1 * RAD_2_DEG,
-                                   phi1 * RAD_2_DEG,
-                                   lambda2 * RAD_2_DEG,
-                                   phi2 * RAD_2_DEG);
-    }
+                /* If they're both over the edge, then push them both. */
+                if (lambda1 < -M_PI && lambda2 < -M_PI)
+                {
+                    lambda1 += 2 * M_PI;
+                    lambda2 += 2 * M_PI;
+                }
+                else if (lambda1 > M_PI && lambda2 > M_PI)
+                {
+                    lambda1 -= 2 * M_PI;
+                    lambda2 -= 2 * M_PI;
+                }
+                /* If only one of them is over the edge, then skip this
+                 * line. The results in missing segments around the
+                 * poles. This is okay, though, because we're missing
+                 * segments in those areas anyway. */
+                else if (!(lambda1 >= -M_PI && lambda1 <= M_PI &&
+                           lambda2 >= -M_PI && lambda2 <= M_PI))
+                    continue;
+
+                screen_draw_line_projected(s,
+                                           lambda1 * RAD_2_DEG,
+                                           phi1 * RAD_2_DEG,
+                                           lambda2 * RAD_2_DEG,
+                                           phi2 * RAD_2_DEG);
+            }
+    /* But by default, we iterate over lambda which is much simpler and
+     * more stable (except for those cases above). */
+    else
+        for (i = 0; i < steps; i++)
+        {
+            lambda1 = (double)i / steps * 2 * M_PI - M_PI;
+            phi1 = atan(tan(phi_n) * cos(lambda1 - lambda_n));
+
+            lambda2 = (double)(i + 1) / steps * 2 * M_PI - M_PI;
+            phi2 = atan(tan(phi_n) * cos(lambda2 - lambda_n));
+
+            screen_draw_line_projected(s,
+                                       lambda1 * RAD_2_DEG,
+                                       phi1 * RAD_2_DEG,
+                                       lambda2 * RAD_2_DEG,
+                                       phi2 * RAD_2_DEG);
+        }
 }
 
 void
