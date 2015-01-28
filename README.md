@@ -12,11 +12,14 @@ You need a map. I suggest you use one of those:
 *  [Natural Earth Data, Land](http://www.naturalearthdata.com/downloads/110m-physical-vectors/110m-land/)
 *  [Natural Earth Data, Countries](http://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-admin-0-countries/)
 
-Since NED distributes their data as "ESRI Shapefiles", you also need this library:
+Since NED distributes their data as "ESRI Shapefiles", you also need [shapelib](http://shapelib.maptools.org/).
 
-*  [Shapelib](http://shapelib.maptools.org/)
+For rendering filled polygons, [libgd](http://www.libgd.org/) is used.
 
-In Arch Linux, the library is available in the package [shapelib](https://www.archlinux.org/packages/community/x86_64/shapelib/).
+Long story short: If you're using Arch Linux, you're fine with installing these two packages:
+
+*  [gd](https://www.archlinux.org/packages/extra/x86_64/gd/)
+*  [shapelib](https://www.archlinux.org/packages/community/x86_64/shapelib/)
 
 Command line options
 ====================
@@ -44,6 +47,8 @@ Command line options
 `-b`: Draw a border around the projected world. This can be useful for some projections.
 
 `-C`: Disable colors.
+
+`-o`: Draw land masses as filled polygons. You'll get garbled results when using this together with country borders.
 
 More ideas
 ==========

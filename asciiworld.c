@@ -1,3 +1,4 @@
+#include <gd.h>
 #include <math.h>
 #include <shapefil.h>
 #include <stdio.h>
@@ -22,9 +23,11 @@ struct screen
     int width, height;
     char *data;
 
+    int solid_land;
     int world_border;
     int brush_color;
     int disable_colors;
+    double shade_steps_degree;
 
     void (* project)(struct screen *s, double lon, double lat, double *x, double *y);
 
@@ -88,57 +91,16 @@ calc_sun(struct sun *sun)
     sun->lat = 0.4095 * sin(0.016906 * ((utc.tm_yday + 1) - 80.086)) * RAD_2_DEG;
 }
 
-char
-decide_shade(struct screen *s, double lon1, double lat1, double lon2, double lat2)
-{
-    double phi1, lambda1, phi2, lambda2, phi_sun, lambda_sun;
-    double zeta1, zeta2;
-
-    if (!s->sun.active)
-        return PIXEL_NORMAL;
-
-    /* We're dealing with two points on the sphere here. This is kind of
-     * a problem because those two points might not be close to each
-     * other and thus create a long line. How shall we color that line?
-     * We don't know anything about the points/pixels between the two
-     * given points.
-     *
-     * (This problem exists in the line drawing algorithm as well: Only
-     * two points actually get projected instead of EVERY point on the
-     * line.)
-     *
-     * To decide the color of the resulting LINE, we use the Great
-     * Circle Distance. We do this for both points and decide based on
-     * the average distance. */
-
-    lambda1 = lon1 * DEG_2_RAD;
-    phi1 = lat1 * DEG_2_RAD;
-
-    lambda2 = lon2 * DEG_2_RAD;
-    phi2 = lat2 * DEG_2_RAD;
-
-    lambda_sun = s->sun.lon * DEG_2_RAD;
-    phi_sun = s->sun.lat * DEG_2_RAD;
-
-    zeta1 = acos(sin(phi_sun) * sin(phi1) +
-                 cos(phi_sun) * cos(phi1) * cos(lambda1 - lambda_sun));
-    zeta2 = acos(sin(phi_sun) * sin(phi2) +
-                 cos(phi_sun) * cos(phi2) * cos(lambda2 - lambda_sun));
-
-    if (zeta1 + (zeta2 - zeta1) * 0.5 > 90 * DEG_2_RAD)
-        return PIXEL_DARK;
-    else
-        return PIXEL_NORMAL;
-}
-
 void
 screen_init(struct screen *s)
 {
     s->brush_color = PIXEL_NORMAL;
     s->project = project_equirect;
     s->sun.active = 0;
+    s->solid_land = 0;
     s->world_border = 0;
     s->disable_colors = 0;
+    s->shade_steps_degree = 2;  /* TODO: Make this an option? */
 }
 
 int
@@ -168,7 +130,7 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
     int x, y, sun_found, is_line, glyph;
     char a, b, c, d;
     char *charset[] = {  " ",  ".",  ",",  "_",  "'",  "|",  "/",  "J",
-                         "`", "\\",  "|",  "L", "\"",  "7",  "r",  "*" };
+                         "`", "\\",  "|",  "L", "\"",  "7",  "r",  "#" };
 
     for (y = 0; y < s->height - 1; y += 2)
     {
@@ -244,6 +206,9 @@ screen_set_pixel(struct screen *s, int x, int y, char val)
 void
 screen_draw_line(struct screen *s, int x1, int y1, int x2, int y2)
 {
+    /* TODO: Replace with libgd as well? We might then kick our custom
+     * framebuffer ... */
+
     int x, y, t, dx, dy, incx, incy, pdx, pdy, es, el, err;
 
     dx = x2 - x1;
@@ -312,10 +277,18 @@ int
 screen_draw_map(struct screen *s, char *file)
 {
     int ret = 1;
-    int i, n, t, p, v, isFirst;
-    double lon1, lat1;
+    int i, n, t, v, white, black;
+    int x, y;
+    double x1, y1;
+    gdPoint *polypoints = NULL;
     SHPHandle h;
     SHPObject *o;
+    gdImagePtr img;
+
+    img = gdImageCreate(s->width, s->height);
+    black = gdImageColorAllocate(img, 0, 0, 0);
+    (void)black;  /* only needed to set background */
+    white = gdImageColorAllocate(img, 255, 255, 255);
 
     h = SHPOpen(file, "rb");
     if (h == NULL)
@@ -351,31 +324,29 @@ screen_draw_map(struct screen *s, char *file)
             goto cleanout;
         }
 
-        v = 0;
-        p = 0;
-        isFirst = 1;
-
-        while (v < o->nVertices)
+        if (polypoints != NULL)
+            free(polypoints);
+        polypoints = malloc(sizeof(gdPoint) * o->nVertices);
+        for (v = 0; v < o->nVertices; v++)
         {
-            if (p < o->nParts && v == o->panPartStart[p])
-            {
-                /* Start of part number "p" */
-                isFirst = 1;
-                p++;
-            }
-            if (!isFirst)
-            {
-                s->brush_color = decide_shade(s, lon1, lat1, o->padfX[v], o->padfY[v]);
-                screen_draw_line_projected(s, lon1, lat1, o->padfX[v], o->padfY[v]);
-            }
-            lon1 = o->padfX[v];
-            lat1 = o->padfY[v];
-            isFirst = 0;
-            v++;
+            (s->project)(s, o->padfX[v], o->padfY[v], &x1, &y1);
+            polypoints[v].x = x1;
+            polypoints[v].y = y1;
         }
+
+        if (s->solid_land)
+            gdImageFilledPolygon(img, polypoints, o->nVertices, white);
+        else
+            gdImagePolygon(img, polypoints, o->nVertices, white);
 
         SHPDestroyObject(o);
     }
+
+    for (y = 0; y < s->height; y++)
+        for (x = 0; x < s->width; x++)
+            screen_set_pixel(s, x, y, gdImageGetPixel(img, x, y) ? s->brush_color : 0);
+
+    gdImageDestroy(img);
 
 cleanout:
     SHPClose(h);
@@ -523,6 +494,71 @@ screen_mark_sun_border(struct screen *s)
 }
 
 void
+screen_shade_map(struct screen *s)
+{
+    int dark, normal, shade;
+    int ix, iy;
+    gdImagePtr img;
+    double phi, lambda, phi_sun, lambda_sun, zeta, aspan;
+    double x, y;
+    gdPoint polypoints[4];
+
+    /* Render small patches in the color of daylight or night. The
+     * result is then used as an overlay for the existing map. We're
+     * still calculating everything in spherical coordinates which saves
+     * us the need for an inverse projection. */
+
+    img = gdImageCreate(s->width, s->height);
+    dark = gdImageColorAllocate(img, 0, 0, 0);
+    normal = gdImageColorAllocate(img, 255, 255, 255);
+
+    aspan = s->shade_steps_degree * DEG_2_RAD;
+
+    lambda_sun = s->sun.lon * DEG_2_RAD;
+    phi_sun = s->sun.lat * DEG_2_RAD;
+
+    /* TODO: Center patches? Only matters for high resolutions... */
+    for (lambda = -180 * DEG_2_RAD; lambda < 180 * DEG_2_RAD - aspan; lambda += aspan)
+    {
+        for (phi = -90 * DEG_2_RAD; phi < 90 * DEG_2_RAD - aspan; phi += aspan)
+        {
+            /* Use the Great Circle Distance to determine color of this
+             * patch. */
+            zeta = acos(sin(phi_sun) * sin(phi) +
+                    cos(phi_sun) * cos(phi) * cos(lambda - lambda_sun));
+
+            if (zeta > 90 * DEG_2_RAD)
+                shade = dark;
+            else
+                shade = normal;
+
+            (s->project)(s, lambda * RAD_2_DEG, phi * RAD_2_DEG, &x, &y);
+            polypoints[0].x = x;
+            polypoints[0].y = y;
+            (s->project)(s, (lambda + aspan) * RAD_2_DEG, phi * RAD_2_DEG, &x, &y);
+            polypoints[1].x = x;
+            polypoints[1].y = y;
+            (s->project)(s, (lambda + aspan) * RAD_2_DEG, (phi + aspan) * RAD_2_DEG, &x, &y);
+            polypoints[2].x = x;
+            polypoints[2].y = y;
+            (s->project)(s, lambda * RAD_2_DEG, (phi + aspan) * RAD_2_DEG, &x, &y);
+            polypoints[3].x = x;
+            polypoints[3].y = y;
+
+            gdImageFilledPolygon(img, polypoints, 4, shade);
+        }
+    }
+
+    /* XXX Hack: PIXEL_NORMAL is 1, PIXEL_DARK is 3. */
+    for (iy = 0; iy < s->height; iy++)
+        for (ix = 0; ix < s->width; ix++)
+            if (gdImageGetPixel(img, ix, iy) == dark)
+                s->data[iy * s->width + ix] *= 3;
+
+    gdImageDestroy(img);
+}
+
+void
 screen_draw_world_border(struct screen *s)
 {
     int i, steps = 128;
@@ -586,7 +622,7 @@ main(int argc, char **argv)
 
     screen_init(&s);
 
-    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bC")) != -1)
+    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bCo")) != -1)
     {
         switch (opt)
         {
@@ -620,6 +656,9 @@ main(int argc, char **argv)
             case 'C':
                 s.disable_colors = 1;
                 break;
+            case 'o':
+                s.solid_land = 1;
+                break;
             default:
                 exit(EXIT_FAILURE);
         }
@@ -632,7 +671,10 @@ main(int argc, char **argv)
     if (!screen_draw_map(&s, map))
         exit(EXIT_FAILURE);
     if (s.sun.active)
+    {
+        screen_shade_map(&s);
         screen_mark_sun_border(&s);
+    }
     if (s.world_border)
         screen_draw_world_border(&s);
     if (highlight_locations != NULL)
