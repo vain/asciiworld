@@ -62,3 +62,4 @@ CREDITS
 
 *  [Bresenham](https://de.wikipedia.org/wiki/Bresenham-Algorithmus#C-Implementierung)
 *  [Equation of time](http://lexikon.astronomie.info/zeitgleichung/)
+*  [Polygon vertex ordering](http://debian.fmi.uni-sofia.bg/~sergei/cgsr/docs/clockwise.htm)

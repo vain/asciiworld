@@ -274,12 +274,29 @@ screen_draw_line_projected(struct screen *s, double lon1, double lat1,
 }
 
 int
+poly_orientation(double *v)
+{
+    double e1[2], e2[2], z;
+
+    e1[0] = v[2] - v[0];
+    e1[1] = v[3] - v[1];
+
+    e2[0] = v[4] - v[2];
+    e2[1] = v[5] - v[3];
+
+    z = e1[0] * e2[1] - e1[1] * e2[0];
+
+    return z > 0 ? 1 : -1;
+}
+
+int
 screen_draw_map(struct screen *s, char *file)
 {
     int ret = 1;
-    int i, n, t, v, p, vpoly, white, black;
+    int i, n, t, v, p, vpoly, white, black, ori;
     int x, y;
     double x1, y1;
+    double vori[6] = { 0 };
     gdPoint *polypoints = NULL;
     SHPHandle h;
     SHPObject *o;
@@ -331,6 +348,7 @@ screen_draw_map(struct screen *s, char *file)
         v = 0;
         p = 0;
         vpoly = 0;
+        ori = 0;
 
         while (v < o->nVertices)
         {
@@ -339,11 +357,9 @@ screen_draw_map(struct screen *s, char *file)
                 /* Finish previous part. */
                 if (p != 0)
                 {
-                    /* TODO: We'll have to determine whether this is a
-                     * hole in the outer polygon. If it is, we'll have
-                     * to draw this in black (because it's a lake). */
                     if (s->solid_land)
-                        gdImageFilledPolygon(img, polypoints, vpoly, white);
+                        gdImageFilledPolygon(img, polypoints, vpoly,
+                                             ori > 0 && o->nParts > 1 ? black : white);
                     else
                         gdImagePolygon(img, polypoints, vpoly, white);
                 }
@@ -351,18 +367,48 @@ screen_draw_map(struct screen *s, char *file)
                 /* Start of part number "p" */
                 p++;
                 vpoly = 0;
+                ori = 0;
             }
 
             (s->project)(s, o->padfX[v], o->padfY[v], &x1, &y1);
             polypoints[vpoly].x = x1;
             polypoints[vpoly].y = y1;
 
+            /* We have to determine whether the points in this polygon
+             * are ordered clockwise or counter-clockwise. This tells us
+             * if this polygon is a "hole" (i.e., a lake). To do so, we
+             * use Paul Bourke's test.
+             *
+             * Note that the resulting "ori" will only be used if this
+             * polygon has more than one part. This is a hack to account
+             * for slightly broken NED data. If we were to follow the
+             * shapefile standard, we'd have to always use "ori". */
+            if (vpoly < 3)
+            {
+                vori[2 * vpoly] = o->padfX[v];
+                vori[2 * vpoly + 1] = o->padfY[v];
+            }
+            else
+            {
+                vori[0] = vori[2];
+                vori[1] = vori[3];
+
+                vori[2] = vori[4];
+                vori[3] = vori[5];
+
+                vori[4] = o->padfX[v];
+                vori[5] = o->padfY[v];
+
+                ori += poly_orientation(vori);
+            }
+
             v++;
             vpoly++;
         }
 
         if (s->solid_land)
-            gdImageFilledPolygon(img, polypoints, vpoly, white);
+            gdImageFilledPolygon(img, polypoints, vpoly,
+                                 ori > 0 && o->nParts > 1 ? black : white);
         else
             gdImagePolygon(img, polypoints, vpoly, white);
 
