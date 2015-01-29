@@ -277,7 +277,7 @@ int
 screen_draw_map(struct screen *s, char *file)
 {
     int ret = 1;
-    int i, n, t, v, white, black;
+    int i, n, t, v, p, vpoly, white, black;
     int x, y;
     double x1, y1;
     gdPoint *polypoints = NULL;
@@ -327,17 +327,44 @@ screen_draw_map(struct screen *s, char *file)
         if (polypoints != NULL)
             free(polypoints);
         polypoints = malloc(sizeof(gdPoint) * o->nVertices);
-        for (v = 0; v < o->nVertices; v++)
+
+        v = 0;
+        p = 0;
+        vpoly = 0;
+
+        while (v < o->nVertices)
         {
+            if (p < o->nParts && v == o->panPartStart[p])
+            {
+                /* Finish previous part. */
+                if (p != 0)
+                {
+                    /* TODO: We'll have to determine whether this is a
+                     * hole in the outer polygon. If it is, we'll have
+                     * to draw this in black (because it's a lake). */
+                    if (s->solid_land)
+                        gdImageFilledPolygon(img, polypoints, vpoly, white);
+                    else
+                        gdImagePolygon(img, polypoints, vpoly, white);
+                }
+
+                /* Start of part number "p" */
+                p++;
+                vpoly = 0;
+            }
+
             (s->project)(s, o->padfX[v], o->padfY[v], &x1, &y1);
-            polypoints[v].x = x1;
-            polypoints[v].y = y1;
+            polypoints[vpoly].x = x1;
+            polypoints[vpoly].y = y1;
+
+            v++;
+            vpoly++;
         }
 
         if (s->solid_land)
-            gdImageFilledPolygon(img, polypoints, o->nVertices, white);
+            gdImageFilledPolygon(img, polypoints, vpoly, white);
         else
-            gdImagePolygon(img, polypoints, o->nVertices, white);
+            gdImagePolygon(img, polypoints, vpoly, white);
 
         SHPDestroyObject(o);
     }
