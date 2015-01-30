@@ -8,12 +8,39 @@
 #include <time.h>
 #include <unistd.h>
 
-#define PIXEL_NORMAL 1
+#define PIXEL_NORMAL 10
+#define PIXEL_DARK1 20
+#define PIXEL_DARK2 30
+#define PIXEL_DARK3 40
 #define PIXEL_HIGHLIGHT 2
-#define PIXEL_DARK 3
 #define PIXEL_SUN 4
 #define PIXEL_SUN_BORDER 5
 #define PIXEL_LINE 6
+
+/* TODO: Detect this at runtime. */
+#define HAVE_256_COLORS
+
+#ifdef HAVE_256_COLORS
+#define SEQ_LOCATION "\033[31;1m"
+#define SEQ_SUN "\033[33m"
+#define SEQ_SUN_BORDER "\033[36m"
+#define SEQ_DARK1 "\033[38;5;17m"
+#define SEQ_DARK2 "\033[38;5;27m"
+#define SEQ_DARK3 "\033[38;5;37m"
+#define SEQ_NORMAL "\033[38;5;76m"
+#define SEQ_LINE "\033[37m"
+#define SEQ_RESET "\033[0m"
+#else
+#define SEQ_LOCATION "\033[31;1m"
+#define SEQ_SUN "\033[33m"
+#define SEQ_SUN_BORDER "\033[36m"
+#define SEQ_DARK1 "\033[34m"
+#define SEQ_DARK2 "\033[34;1m"
+#define SEQ_DARK3 "\033[32m"
+#define SEQ_NORMAL "\033[32;1m"
+#define SEQ_LINE "\033[37m"
+#define SEQ_RESET "\033[0m"
+#endif
 
 #define DEG_2_RAD (M_PI / 180.0)
 #define RAD_2_DEG (180.0 / M_PI)
@@ -100,7 +127,7 @@ screen_init(struct screen *s)
     s->solid_land = 0;
     s->world_border = 0;
     s->disable_colors = 0;
-    s->shade_steps_degree = 2;  /* TODO: Make this an option? */
+    s->shade_steps_degree = 1;  /* TODO: Make this an option? */
 }
 
 int
@@ -130,7 +157,7 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
     int x, y, sun_found, is_line, glyph;
     char a, b, c, d;
     char *charset[] = {  " ",  ".",  ",",  "_",  "'",  "|",  "/",  "J",
-                         "`", "\\",  "|",  "L", "\"",  "7",  "r",  "#" };
+                         "`", "\\",  "|",  "L", "\"",  "7",  "r",  "o" };
 
     for (y = 0; y < s->height - 1; y += 2)
     {
@@ -144,9 +171,9 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
             if (a == PIXEL_HIGHLIGHT || b == PIXEL_HIGHLIGHT ||
                 c == PIXEL_HIGHLIGHT || d == PIXEL_HIGHLIGHT)
             {
-                print_color(s, "\033[31;1m");
+                print_color(s, SEQ_LOCATION);
                 printf("X");
-                print_color(s, "\033[0m");
+                print_color(s, SEQ_RESET);
             }
             else
             {
@@ -158,18 +185,24 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                         c == PIXEL_SUN || d == PIXEL_SUN)
                     {
                         sun_found = 1;
-                        print_color(s, "\033[36m");
+                        print_color(s, SEQ_SUN);
                         printf("S");
-                        print_color(s, "\033[0m");
+                        print_color(s, SEQ_RESET);
                     }
                     else if (a == PIXEL_SUN_BORDER || b == PIXEL_SUN_BORDER ||
                              c == PIXEL_SUN_BORDER || d == PIXEL_SUN_BORDER)
-                        print_color(s, "\033[36m");
-                    else if (a == PIXEL_DARK || b == PIXEL_DARK ||
-                             c == PIXEL_DARK || d == PIXEL_DARK)
-                        print_color(s, "\033[30;1m");
+                        print_color(s, SEQ_SUN_BORDER);
+                    else if (a == PIXEL_DARK1 || b == PIXEL_DARK1 ||
+                             c == PIXEL_DARK1 || d == PIXEL_DARK1)
+                        print_color(s, SEQ_DARK1);
+                    else if (a == PIXEL_DARK2 || b == PIXEL_DARK2 ||
+                             c == PIXEL_DARK2 || d == PIXEL_DARK2)
+                        print_color(s, SEQ_DARK2);
+                    else if (a == PIXEL_DARK3 || b == PIXEL_DARK3 ||
+                             c == PIXEL_DARK3 || d == PIXEL_DARK3)
+                        print_color(s, SEQ_DARK3);
                     else
-                        print_color(s, "\033[33;1m");
+                        print_color(s, SEQ_NORMAL);
                 }
 
                 if (!sun_found)
@@ -180,14 +213,14 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                         c == PIXEL_LINE || d == PIXEL_LINE)
                     {
                         is_line = 1;
-                        print_color(s, "\033[0m\033[37m");
+                        print_color(s, SEQ_RESET SEQ_LINE);
                     }
 
                     glyph = (!!a << 3) | (!!b << 2) | (!!c << 1) | !!d;
                     printf("%s", charset[glyph]);
 
                     if (s->sun.active || is_line)
-                        print_color(s, "\033[0m");
+                        print_color(s, SEQ_RESET);
                 }
             }
         }
@@ -569,7 +602,7 @@ screen_mark_sun_border(struct screen *s)
 void
 screen_shade_map(struct screen *s)
 {
-    int dark, normal, shade;
+    int black, dark1, dark2, dark3, normal, shade;
     int ix, iy;
     gdImagePtr img;
     double phi, lambda, phi_sun, lambda_sun, zeta, aspan;
@@ -582,8 +615,12 @@ screen_shade_map(struct screen *s)
      * us the need for an inverse projection. */
 
     img = gdImageCreate(s->width, s->height);
-    dark = gdImageColorAllocate(img, 0, 0, 0);
+    black = gdImageColorAllocate(img, 0, 0, 0);
+    (void)black;  /* only needed to set background */
     normal = gdImageColorAllocate(img, 255, 255, 255);
+    dark1 = gdImageColorAllocate(img, 255, 0, 0);
+    dark2 = gdImageColorAllocate(img, 0, 255, 0);
+    dark3 = gdImageColorAllocate(img, 0, 0, 255);
 
     aspan = s->shade_steps_degree * DEG_2_RAD;
 
@@ -600,8 +637,14 @@ screen_shade_map(struct screen *s)
             zeta = acos(sin(phi_sun) * sin(phi) +
                     cos(phi_sun) * cos(phi) * cos(lambda - lambda_sun));
 
-            if (zeta > 90 * DEG_2_RAD)
-                shade = dark;
+            /* TODO: These values "look good". I don't know if they're
+             * accurate. */
+            if (zeta > 96 * DEG_2_RAD)
+                shade = dark1;
+            else if (zeta > 90 * DEG_2_RAD)
+                shade = dark2;
+            else if (zeta > 84 * DEG_2_RAD)
+                shade = dark3;
             else
                 shade = normal;
 
@@ -622,11 +665,21 @@ screen_shade_map(struct screen *s)
         }
     }
 
-    /* XXX Hack: PIXEL_NORMAL is 1, PIXEL_DARK is 3. */
+    /* Use as overlay for unshaded map. Mind the multiplication: This
+     * only works because PIXEL_NORMAL and PIXEL_DARK* are chosen
+     * accordingly. */
     for (iy = 0; iy < s->height; iy++)
+    {
         for (ix = 0; ix < s->width; ix++)
-            if (gdImageGetPixel(img, ix, iy) == dark)
+        {
+            if (gdImageGetPixel(img, ix, iy) == dark1)
+                s->data[iy * s->width + ix] *= 2;
+            else if (gdImageGetPixel(img, ix, iy) == dark2)
                 s->data[iy * s->width + ix] *= 3;
+            else if (gdImageGetPixel(img, ix, iy) == dark3)
+                s->data[iy * s->width + ix] *= 4;
+        }
+    }
 
     gdImageDestroy(img);
 }
