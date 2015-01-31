@@ -1,4 +1,13 @@
 #!/bin/bash
 
-curl -s "http://www.celestrak.com/cgi-bin/TLE.pl?CATNR=$1" |
-sed -n '/<PRE>/,/<\/PRE>/p' | sed '1d; $d'
+tle=$(curl -s --fail "http://www.celestrak.com/cgi-bin/TLE.pl?CATNR=$1" |
+sed -n '/<PRE>/,/<\/PRE>/p' | sed '1d; $d')
+(( ${PIPESTATUS[0]} != 0 )) && exit ${PIPESTATUS[0]}
+
+if [[ "$tle" == *No\ TLE\ found* ]]
+then
+    echo "$tle" >&2
+    exit 1
+fi
+
+echo "$tle"
