@@ -443,7 +443,7 @@ screen_mark_locations(struct screen *s, char *file)
     FILE *fp;
     char *line = NULL;
     size_t line_n = 0;
-    int tracki = -1;
+    int mode, active, tracki = -1;
     double lat, lon, x, y;
 
     fp = fopen(file, "r");
@@ -453,22 +453,33 @@ screen_mark_locations(struct screen *s, char *file)
         return 0;
     }
 
-    s->brush = s->col_highlight;
-
-    while (getline(&line, &line_n, fp) != -1)
+    for (mode = 0; mode < 2; mode++)
     {
-        if (strncmp(line, "points", strlen("points")) == 0)
-            s->brush = s->col_highlight;
-        else if (strncmp(line, "track", strlen("track")) == 0)
+        fseek(fp, 0, SEEK_SET);
+        active = 0;
+        while (getline(&line, &line_n, fp) != -1)
         {
-            tracki++;
-            tracki %= 3;
-            s->brush = s->col_track[tracki];
-        }
-        else if (sscanf(line, "%lf %lf\n", &lat, &lon) == 2)
-        {
-            (s->project)(s, lon, lat, &x, &y);
-            gdImageSetPixel(s->img, x, y, s->brush);
+            if (strncmp(line, "track", strlen("track")) == 0)
+            {
+                active = mode == 0 ? 1 : 0;
+                if (active)
+                {
+                    tracki++;
+                    tracki %= 3;
+                    s->brush = s->col_track[tracki];
+                }
+            }
+            else if (strncmp(line, "points", strlen("points")) == 0)
+            {
+                active = mode == 1 ? 1 : 0;
+                if (active)
+                    s->brush = s->col_highlight;
+            }
+            else if (sscanf(line, "%lf %lf\n", &lat, &lon) == 2 && active)
+            {
+                (s->project)(s, lon, lat, &x, &y);
+                gdImageSetPixel(s->img, x, y, s->brush);
+            }
         }
     }
 
