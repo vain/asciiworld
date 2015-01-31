@@ -1,3 +1,4 @@
+#include <gd.h>
 #include <math.h>
 #include <shapefil.h>
 #include <stdio.h>
@@ -7,24 +8,59 @@
 #include <time.h>
 #include <unistd.h>
 
-#define PIXEL_NORMAL 1
-#define PIXEL_HIGHLIGHT 2
-#define PIXEL_DARK 3
-#define PIXEL_SUN 4
-#define PIXEL_SUN_BORDER 5
-#define PIXEL_LINE 6
-
 #define DEG_2_RAD (M_PI / 180.0)
 #define RAD_2_DEG (180.0 / M_PI)
+
+enum sequence { SEQ_RESET, SEQ_LOCATION, SEQ_SUN, SEQ_SUN_BORDER, SEQ_SHADE1,
+                SEQ_SHADE2, SEQ_SHADE3, SEQ_SHADE4, SEQ_SHADE5, SEQ_SHADE6,
+                SEQ_SHADE7, SEQ_SHADE8, SEQ_LINE };
+char *seq_256colors[] = { "\033[0m\033[48;5;16m",  /* reset */
+                          "\033[38;5;196m",        /* location */
+                          "\033[38;5;220m",        /* sun */
+                          "\033[38;5;220m",        /* sun border */
+                          "\033[38;5;17m",         /* shade1 */
+                          "\033[38;5;19m",         /* shade2 */
+                          "\033[38;5;21m",         /* shade3 */
+                          "\033[38;5;26m",         /* shade4 */
+                          "\033[38;5;30m",         /* shade5 */
+                          "\033[38;5;35m",         /* shade6 */
+                          "\033[38;5;40m",         /* shade7 */
+                          "\033[38;5;46m",         /* shade8 */
+                          "\033[38;5;255m" };      /* line */
+char *seq_8colors[] = { "\033[0m\033[40m",         /* reset */
+                        "\033[31;1m",              /* location */
+                        "\033[33m",                /* sun */
+                        "\033[36m",                /* sun border */
+                        "\033[34m",                /* shade1 */
+                        "\033[34m",                /* shade2 */
+                        "\033[34;1m",              /* shade3 */
+                        "\033[34;1m",              /* shade4 */
+                        "\033[32m",                /* shade5 */
+                        "\033[32m",                /* shade6 */
+                        "\033[32;1m",              /* shade7 */
+                        "\033[32;1m",              /* shade8 */
+                        "\033[37m" };              /* line */
 
 struct screen
 {
     int width, height;
-    char *data;
+    gdImagePtr img;
+    int col_black;
+    int col_normal;
+    int col_shade[8];
+    int col_highlight;
+    int col_sun;
+    int col_sun_border;
+    int col_line;
+    int brush;
 
+    char **esc_seq;
+
+    int solid_land;
     int world_border;
-    int brush_color;
     int disable_colors;
+    double shade_steps_degree;
+    double dusk_degree;
 
     void (* project)(struct screen *s, double lon, double lat, double *x, double *y);
 
@@ -88,103 +124,81 @@ calc_sun(struct sun *sun)
     sun->lat = 0.4095 * sin(0.016906 * ((utc.tm_yday + 1) - 80.086)) * RAD_2_DEG;
 }
 
-char
-decide_shade(struct screen *s, double lon1, double lat1, double lon2, double lat2)
-{
-    double phi1, lambda1, phi2, lambda2, phi_sun, lambda_sun;
-    double zeta1, zeta2;
-
-    if (!s->sun.active)
-        return PIXEL_NORMAL;
-
-    /* We're dealing with two points on the sphere here. This is kind of
-     * a problem because those two points might not be close to each
-     * other and thus create a long line. How shall we color that line?
-     * We don't know anything about the points/pixels between the two
-     * given points.
-     *
-     * (This problem exists in the line drawing algorithm as well: Only
-     * two points actually get projected instead of EVERY point on the
-     * line.)
-     *
-     * To decide the color of the resulting LINE, we use the Great
-     * Circle Distance. We do this for both points and decide based on
-     * the average distance. */
-
-    lambda1 = lon1 * DEG_2_RAD;
-    phi1 = lat1 * DEG_2_RAD;
-
-    lambda2 = lon2 * DEG_2_RAD;
-    phi2 = lat2 * DEG_2_RAD;
-
-    lambda_sun = s->sun.lon * DEG_2_RAD;
-    phi_sun = s->sun.lat * DEG_2_RAD;
-
-    zeta1 = acos(sin(phi_sun) * sin(phi1) +
-                 cos(phi_sun) * cos(phi1) * cos(lambda1 - lambda_sun));
-    zeta2 = acos(sin(phi_sun) * sin(phi2) +
-                 cos(phi_sun) * cos(phi2) * cos(lambda2 - lambda_sun));
-
-    if (zeta1 + (zeta2 - zeta1) * 0.5 > 90 * DEG_2_RAD)
-        return PIXEL_DARK;
-    else
-        return PIXEL_NORMAL;
-}
-
 void
 screen_init(struct screen *s)
 {
-    s->brush_color = PIXEL_NORMAL;
     s->project = project_equirect;
     s->sun.active = 0;
+    s->solid_land = 0;
     s->world_border = 0;
     s->disable_colors = 0;
+    s->shade_steps_degree = 1;
+    s->dusk_degree = 6;
+    s->esc_seq = seq_256colors;
 }
 
 int
-screen_init_data(struct screen *s, int width, int height)
+screen_init_img(struct screen *s, int width, int height)
 {
+    int i;
+
     s->width = width;
     s->height = height;
-    s->data = calloc(1, width * height);
-    if (s->data == NULL)
+
+    s->img = gdImageCreate(s->width, s->height);
+    if (s->img == NULL)
     {
-        fprintf(stderr, "Out of memory in screen_init()\n");
+        fprintf(stderr, "Could not create image of size %dx%d.\n",
+                s->width, s->height);
         return 0;
     }
+
+    s->col_black = gdImageColorAllocate(s->img, 0, 0, 0);
+    s->col_normal = gdImageColorAllocate(s->img, 0, 0, 1);
+    for (i = 0; i < 8; i++)
+    {
+        s->col_shade[i] = gdImageColorAllocate(s->img, 0, 0, 2 + i);
+    }
+    s->col_highlight = gdImageColorAllocate(s->img, 0, 1, 0);
+    s->col_sun = gdImageColorAllocate(s->img, 0, 2, 0);
+    s->col_sun_border = gdImageColorAllocate(s->img, 0, 2, 0);
+    s->col_line = gdImageColorAllocate(s->img, 0, 3, 0);
+
     return 1;
 }
 
 void
-print_color(struct screen *s, char *str)
+print_color(struct screen *s, enum sequence seq)
 {
     if (!s->disable_colors)
-        printf("%s", str);
+        printf("%s", s->esc_seq[seq]);
 }
 
 void
 screen_show_interpreted(struct screen *s, int trailing_newline)
 {
-    int x, y, sun_found, is_line, glyph;
-    char a, b, c, d;
+    int x, y, i, sun_found, is_line, glyph;
+    int a, b, c, d;
     char *charset[] = {  " ",  ".",  ",",  "_",  "'",  "|",  "/",  "J",
-                         "`", "\\",  "|",  "L", "\"",  "7",  "r",  "*" };
+                         "`", "\\",  "|",  "L", "\"",  "7",  "r",  "o" };
+
+    print_color(s, SEQ_RESET);
 
     for (y = 0; y < s->height - 1; y += 2)
     {
         for (x = 0; x < s->width - 1; x += 2)
         {
-            a = s->data[y * s->width + x];
-            b = s->data[y * s->width + x + 1];
-            c = s->data[(y + 1) * s->width + x];
-            d = s->data[(y + 1) * s->width + x + 1];
+            a = gdImageGetPixel(s->img, x, y);
+            b = gdImageGetPixel(s->img, x + 1, y);
+            c = gdImageGetPixel(s->img, x, y + 1);
+            d = gdImageGetPixel(s->img, x + 1, y + 1);
 
-            if (a == PIXEL_HIGHLIGHT || b == PIXEL_HIGHLIGHT ||
-                c == PIXEL_HIGHLIGHT || d == PIXEL_HIGHLIGHT)
+            if (a == s->col_highlight || b == s->col_highlight ||
+                c == s->col_highlight || d == s->col_highlight)
             {
-                print_color(s, "\033[31;1m");
+                print_color(s, SEQ_LOCATION);
                 printf("X");
-                print_color(s, "\033[0m");
+                print_color(s, SEQ_RESET);
             }
             else
             {
@@ -192,104 +206,53 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
 
                 if (s->sun.active)
                 {
-                    if (a == PIXEL_SUN || b == PIXEL_SUN ||
-                        c == PIXEL_SUN || d == PIXEL_SUN)
+                    if (a == s->col_sun || b == s->col_sun ||
+                        c == s->col_sun || d == s->col_sun)
                     {
                         sun_found = 1;
-                        print_color(s, "\033[36m");
+                        print_color(s, SEQ_SUN);
                         printf("S");
-                        print_color(s, "\033[0m");
+                        print_color(s, SEQ_RESET);
                     }
-                    else if (a == PIXEL_SUN_BORDER || b == PIXEL_SUN_BORDER ||
-                             c == PIXEL_SUN_BORDER || d == PIXEL_SUN_BORDER)
-                        print_color(s, "\033[36m");
-                    else if (a == PIXEL_DARK || b == PIXEL_DARK ||
-                             c == PIXEL_DARK || d == PIXEL_DARK)
-                        print_color(s, "\033[30;1m");
+                    else if (a == s->col_sun_border || b == s->col_sun_border ||
+                             c == s->col_sun_border || d == s->col_sun_border)
+                        print_color(s, SEQ_SUN_BORDER);
                     else
-                        print_color(s, "\033[33;1m");
+                    {
+                        for (i = 0; i < 8; i++)
+                        {
+                            if (a == s->col_shade[i] || b == s->col_shade[i] ||
+                                c == s->col_shade[i] || d == s->col_shade[i])
+                            {
+                                print_color(s, SEQ_SHADE1 + i);
+                                break;
+                            }
+                        }
+                    }
                 }
 
                 if (!sun_found)
                 {
                     is_line = 0;
 
-                    if (a == PIXEL_LINE || b == PIXEL_LINE ||
-                        c == PIXEL_LINE || d == PIXEL_LINE)
+                    if (a == s->col_line || b == s->col_line ||
+                        c == s->col_line || d == s->col_line)
                     {
                         is_line = 1;
-                        print_color(s, "\033[0m\033[37m");
+                        print_color(s, SEQ_RESET);
+                        print_color(s, SEQ_LINE);
                     }
 
                     glyph = (!!a << 3) | (!!b << 2) | (!!c << 1) | !!d;
                     printf("%s", charset[glyph]);
 
                     if (s->sun.active || is_line)
-                        print_color(s, "\033[0m");
+                        print_color(s, SEQ_RESET);
                 }
             }
         }
         if (trailing_newline || y + 1 < s->height - 1)
             printf("\n");
-    }
-}
-
-void
-screen_set_pixel(struct screen *s, int x, int y, char val)
-{
-    if (x >= 0 && y >= 0 && x < s->width && y < s->height)
-        s->data[y * s->width + x] = val;
-}
-
-void
-screen_draw_line(struct screen *s, int x1, int y1, int x2, int y2)
-{
-    int x, y, t, dx, dy, incx, incy, pdx, pdy, es, el, err;
-
-    dx = x2 - x1;
-    dy = y2 - y1;
-
-    incx = dx < 0 ? -1 : 1;
-    incy = dy < 0 ? -1 : 1;
-
-    dx = dx < 0 ? -dx : dx;
-    dy = dy < 0 ? -dy : dy;
-
-    if (dx > dy)
-    {
-        pdx = incx;
-        pdy = 0;
-        es = dy;
-        el = dx;
-    }
-    else
-    {
-        pdx = 0;
-        pdy = incy;
-        es = dx;
-        el = dy;
-    }
-
-    x = x1;
-    y = y1;
-    err = el / 2;
-    screen_set_pixel(s, x, y, s->brush_color);
-
-    for (t = 0; t < el; t++)
-    {
-        err -= es;
-        if (err < 0)
-        {
-            err += el;
-            x += incx;
-            y += incy;
-        }
-        else
-        {
-            x += pdx;
-            y += pdy;
-        }
-        screen_set_pixel(s, x, y, s->brush_color);
     }
 }
 
@@ -305,15 +268,33 @@ screen_draw_line_projected(struct screen *s, double lon1, double lat1,
     if ((int)x1 == (int)x2 && (int)y1 == (int)y2)
         return;
 
-    screen_draw_line(s, x1, y1, x2, y2);
+    gdImageLine(s->img, x1, y1, x2, y2, s->brush);
+}
+
+int
+poly_orientation(double *v)
+{
+    double e1[2], e2[2], z;
+
+    e1[0] = v[2] - v[0];
+    e1[1] = v[3] - v[1];
+
+    e2[0] = v[4] - v[2];
+    e2[1] = v[5] - v[3];
+
+    z = e1[0] * e2[1] - e1[1] * e2[0];
+
+    return z > 0 ? 1 : -1;
 }
 
 int
 screen_draw_map(struct screen *s, char *file)
 {
     int ret = 1;
-    int i, n, t, p, v, isFirst;
-    double lon1, lat1;
+    int i, n, t, v, p, vpoly, ori;
+    double x1, y1;
+    double vori[6] = { 0 };
+    gdPoint *polypoints = NULL;
     SHPHandle h;
     SHPObject *o;
 
@@ -351,28 +332,80 @@ screen_draw_map(struct screen *s, char *file)
             goto cleanout;
         }
 
+        if (polypoints != NULL)
+            free(polypoints);
+        polypoints = malloc(sizeof(gdPoint) * o->nVertices);
+
         v = 0;
         p = 0;
-        isFirst = 1;
+        vpoly = 0;
+        ori = 0;
 
         while (v < o->nVertices)
         {
             if (p < o->nParts && v == o->panPartStart[p])
             {
+                /* Finish previous part. */
+                if (p != 0)
+                {
+                    if (s->solid_land)
+                        gdImageFilledPolygon(s->img, polypoints, vpoly,
+                                             ori > 0 && o->nParts > 1 ?
+                                                s->col_black :
+                                                s->col_normal);
+                    else
+                        gdImagePolygon(s->img, polypoints, vpoly, s->col_normal);
+                }
+
                 /* Start of part number "p" */
-                isFirst = 1;
                 p++;
+                vpoly = 0;
+                ori = 0;
             }
-            if (!isFirst)
+
+            (s->project)(s, o->padfX[v], o->padfY[v], &x1, &y1);
+            polypoints[vpoly].x = x1;
+            polypoints[vpoly].y = y1;
+
+            /* We have to determine whether the points in this polygon
+             * are ordered clockwise or counter-clockwise. This tells us
+             * if this polygon is a "hole" (i.e., a lake). To do so, we
+             * use Paul Bourke's test.
+             *
+             * Note that the resulting "ori" will only be used if this
+             * polygon has more than one part. This is a hack to account
+             * for slightly broken NED data. If we were to follow the
+             * shapefile standard, we'd have to always use "ori". */
+            if (vpoly < 3)
             {
-                s->brush_color = decide_shade(s, lon1, lat1, o->padfX[v], o->padfY[v]);
-                screen_draw_line_projected(s, lon1, lat1, o->padfX[v], o->padfY[v]);
+                vori[2 * vpoly] = o->padfX[v];
+                vori[2 * vpoly + 1] = o->padfY[v];
             }
-            lon1 = o->padfX[v];
-            lat1 = o->padfY[v];
-            isFirst = 0;
+            else
+            {
+                vori[0] = vori[2];
+                vori[1] = vori[3];
+
+                vori[2] = vori[4];
+                vori[3] = vori[5];
+
+                vori[4] = o->padfX[v];
+                vori[5] = o->padfY[v];
+
+                ori += poly_orientation(vori);
+            }
+
             v++;
+            vpoly++;
         }
+
+        if (s->solid_land)
+            gdImageFilledPolygon(s->img, polypoints, vpoly,
+                                 ori > 0 && o->nParts > 1 ?
+                                    s->col_black :
+                                    s->col_normal);
+        else
+            gdImagePolygon(s->img, polypoints, vpoly, s->col_normal);
 
         SHPDestroyObject(o);
     }
@@ -407,8 +440,7 @@ screen_mark_locations(struct screen *s, char *file)
         if (scanret == 2)
         {
             (s->project)(s, lon, lat, &sx, &sy);
-
-            s->data[(int)sy * s->width + (int)sx] = PIXEL_HIGHLIGHT;
+            gdImageSetPixel(s->img, sx, sy, s->col_highlight);
         }
     }
 
@@ -423,8 +455,7 @@ screen_mark_sun(struct screen *s)
     double x, y;
 
     (s->project)(s, s->sun.lon, s->sun.lat, &x, &y);
-
-    s->data[(int)y * s->width + (int)x] = PIXEL_SUN;
+    gdImageSetPixel(s->img, x, y, s->col_sun);
 }
 
 void
@@ -435,7 +466,7 @@ screen_mark_sun_border(struct screen *s)
     double iscaled_smooth = 20;
     int i, steps = 128, modif;
 
-    s->brush_color = PIXEL_SUN_BORDER;
+    s->brush = s->col_sun_border;
 
     /* Again, see german notes in "sonnenstand.txt". */
 
@@ -523,11 +554,99 @@ screen_mark_sun_border(struct screen *s)
 }
 
 void
+screen_shade_map(struct screen *s)
+{
+    int black, shade_brush, orig;
+    int shade[8];
+    int ix, iy, i, di90;
+    gdImagePtr img;
+    double phi, lambda, phi_sun, lambda_sun, zeta, aspan;
+    double d90;
+    double x, y;
+    gdPoint polypoints[4];
+
+    /* Render small patches in the color of daylight or night. The
+     * result is then used as an overlay for the existing map. We're
+     * still calculating everything in spherical coordinates which saves
+     * us the need for an inverse projection. */
+
+    img = gdImageCreate(s->width, s->height);
+    black = gdImageColorAllocate(img, 0, 0, 0);
+    (void)black;  /* only needed to set background */
+    for (i = 0; i < 8; i++)
+        shade[i] = gdImageColorAllocate(img, 0, 0, i);
+
+    aspan = s->shade_steps_degree * DEG_2_RAD;
+
+    lambda_sun = s->sun.lon * DEG_2_RAD;
+    phi_sun = s->sun.lat * DEG_2_RAD;
+
+    for (lambda = -180 * DEG_2_RAD; lambda < 180 * DEG_2_RAD - aspan; lambda += aspan)
+    {
+        for (phi = -90 * DEG_2_RAD; phi < 90 * DEG_2_RAD - aspan; phi += aspan)
+        {
+            /* Use the Great Circle Distance to determine color of this
+             * patch. */
+            zeta = acos(sin(phi_sun) * sin(phi) +
+                    cos(phi_sun) * cos(phi) * cos(lambda - lambda_sun));
+
+            /* It's daylight if the sun is above the horizon. If it's
+             * below, we're in some kind of twilight (according to
+             * dusk_degree) or night. */
+            d90 = zeta * RAD_2_DEG - 90;
+            d90 /= s->dusk_degree;
+            di90 = 8 - (int)round(d90 * 8);
+            di90 = di90 < 0 ? 0 : di90;
+            di90 = di90 > 7 ? 7 : di90;
+            shade_brush = shade[di90];
+
+            (s->project)(s, lambda * RAD_2_DEG, phi * RAD_2_DEG, &x, &y);
+            polypoints[0].x = x;
+            polypoints[0].y = y;
+            (s->project)(s, (lambda + aspan) * RAD_2_DEG, phi * RAD_2_DEG, &x, &y);
+            polypoints[1].x = x;
+            polypoints[1].y = y;
+            (s->project)(s, (lambda + aspan) * RAD_2_DEG, (phi + aspan) * RAD_2_DEG, &x, &y);
+            polypoints[2].x = x;
+            polypoints[2].y = y;
+            (s->project)(s, lambda * RAD_2_DEG, (phi + aspan) * RAD_2_DEG, &x, &y);
+            polypoints[3].x = x;
+            polypoints[3].y = y;
+
+            gdImageFilledPolygon(img, polypoints, 4, shade_brush);
+        }
+    }
+
+    /* Use img as overlay for s->img. Since these are two different
+     * images with two different color spaces, we have to use "if". */
+    for (iy = 0; iy < s->height; iy++)
+    {
+        for (ix = 0; ix < s->width; ix++)
+        {
+            orig = gdImageGetPixel(s->img, ix, iy);
+            if (orig != s->col_black)
+            {
+                for (i = 0; i < 8; i++)
+                {
+                    if (gdImageGetPixel(img, ix, iy) == shade[i])
+                    {
+                        gdImageSetPixel(s->img, ix, iy, s->col_shade[i]);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    gdImageDestroy(img);
+}
+
+void
 screen_draw_world_border(struct screen *s)
 {
     int i, steps = 128;
 
-    s->brush_color = PIXEL_LINE;
+    s->brush = s->col_line;
 
     for (i = 0; i < steps; i++)
     {
@@ -572,7 +691,7 @@ main(int argc, char **argv)
     struct screen s;
     struct winsize w;
     int trailing_newline = 1;
-    int opt;
+    int opt, c;
     char *map = "ne_110m_land.shp";
     char *highlight_locations = NULL;
 
@@ -586,7 +705,7 @@ main(int argc, char **argv)
 
     screen_init(&s);
 
-    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bC")) != -1)
+    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bc:od:")) != -1)
     {
         switch (opt)
         {
@@ -617,8 +736,21 @@ main(int argc, char **argv)
             case 'b':
                 s.world_border = 1;
                 break;
-            case 'C':
-                s.disable_colors = 1;
+            case 'c':
+                c = atoi(optarg);
+                if (c == 0)
+                    s.disable_colors = 1;
+                else if (c == 8)
+                    s.esc_seq = seq_8colors;
+                break;
+            case 'o':
+                s.solid_land = 1;
+                break;
+            case 'd':
+                if (strncmp(optarg, "nau", 3) == 0)
+                    s.dusk_degree = 12;
+                else if (strncmp(optarg, "ast", 3) == 0)
+                    s.dusk_degree = 18;
                 break;
             default:
                 exit(EXIT_FAILURE);
@@ -627,12 +759,15 @@ main(int argc, char **argv)
 
     if (s.sun.active)
         calc_sun(&s.sun);
-    if (!screen_init_data(&s, 2 * w.ws_col, 2 * w.ws_row))
+    if (!screen_init_img(&s, 2 * w.ws_col, 2 * w.ws_row))
         exit(EXIT_FAILURE);
     if (!screen_draw_map(&s, map))
         exit(EXIT_FAILURE);
     if (s.sun.active)
+    {
+        screen_shade_map(&s);
         screen_mark_sun_border(&s);
+    }
     if (s.world_border)
         screen_draw_world_border(&s);
     if (highlight_locations != NULL)

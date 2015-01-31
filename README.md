@@ -2,7 +2,10 @@ Having a little bit of fun.
 
 ![asciiworld](/asciiworld.png?raw=true)
 
-Inspired by the world map in [blessed-contrib](https://github.com/yaronn/blessed-contrib).
+Inspired by:
+
+*  The world map in [blessed-contrib](https://github.com/yaronn/blessed-contrib)
+*  Fancy stuff in [trehn's termtrack](https://github.com/trehn/termtrack)
 
 Dependencies
 ============
@@ -12,11 +15,14 @@ You need a map. I suggest you use one of those:
 *  [Natural Earth Data, Land](http://www.naturalearthdata.com/downloads/110m-physical-vectors/110m-land/)
 *  [Natural Earth Data, Countries](http://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-admin-0-countries/)
 
-Since NED distributes their data as "ESRI Shapefiles", you also need this library:
+Since NED distributes their data as "ESRI Shapefiles", you also need [shapelib](http://shapelib.maptools.org/).
 
-*  [Shapelib](http://shapelib.maptools.org/)
+For rendering filled polygons, [libgd](http://www.libgd.org/) is used.
 
-In Arch Linux, the library is available in the package [shapelib](https://www.archlinux.org/packages/community/x86_64/shapelib/).
+Long story short: If you're using Arch Linux, you're fine with installing these two packages:
+
+*  [gd](https://www.archlinux.org/packages/extra/x86_64/gd/)
+*  [shapelib](https://www.archlinux.org/packages/community/x86_64/shapelib/)
 
 Command line options
 ====================
@@ -30,7 +36,9 @@ Command line options
     50 8
     -33.9 18.4
 
-`-s`: Turn on "day-and-night" mode. Areas that are currently lit by the sun will be shown as yellow, whereas the other parts are shown as dark grey. The "position" of the sun itself will be marked with an "S".
+`-s`: Turn on "day-and-night" mode. Areas that are currently lit by the sun will be shown as green, whereas the other parts are shown as dark dark blue. Areas currently in the "twilight zone" will be shaded accordingly (see `-d`). The "position" of the sun itself will be marked with an "S". A yellow line marks the current sunset/sunrise locations.
+
+`-d dusk`: Choose definition of "dusk" and thus the twilight span. Accepts "nau" for nautical dusk (12 degree twilight) or "ast" for astronomical dusk (18 degree twilight). By default, civil dusk (6 degree twilight) is used.
 
 `-T`: Do not print the final newline to avoid scrolling. Using `-sT`, you can show a continuously updated map in "day-and-night" mode:
 
@@ -43,17 +51,18 @@ Command line options
 
 `-b`: Draw a border around the projected world. This can be useful for some projections.
 
-`-C`: Disable colors.
+`-c n`: Set to n colors. Accepts 0 or 8. Default is 256.
+
+`-o`: Draw land masses as filled polygons. You'll get garbled results when using this together with country borders.
 
 More ideas
 ==========
 
-*  Zoom/pan/crop.
-*  Highlight areas.
-*  Highlight countries.
+*  Zoom/pan
+*  Render arbitrary lines or orbits
 
 CREDITS
 =======
 
-*  [Bresenham](https://de.wikipedia.org/wiki/Bresenham-Algorithmus#C-Implementierung)
 *  [Equation of time](http://lexikon.astronomie.info/zeitgleichung/)
+*  [Polygon vertex ordering](http://debian.fmi.uni-sofia.bg/~sergei/cgsr/docs/clockwise.htm)
