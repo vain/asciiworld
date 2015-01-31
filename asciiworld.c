@@ -8,15 +8,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#define PIXEL_NORMAL 10
-#define PIXEL_DARK1 20
-#define PIXEL_DARK2 30
-#define PIXEL_DARK3 40
-#define PIXEL_HIGHLIGHT 2
-#define PIXEL_SUN 4
-#define PIXEL_SUN_BORDER 5
-#define PIXEL_LINE 6
-
 #define DEG_2_RAD (M_PI / 180.0)
 #define RAD_2_DEG (180.0 / M_PI)
 
@@ -44,13 +35,22 @@ char *seq_8colors[] = { "\033[0m",             /* reset */
 struct screen
 {
     int width, height;
-    char *data;
+    gdImagePtr img;
+    int col_black;
+    int col_normal;
+    int col_dark1;
+    int col_dark2;
+    int col_dark3;
+    int col_highlight;
+    int col_sun;
+    int col_sun_border;
+    int col_line;
+    int brush;
 
     char **esc_seq;
 
     int solid_land;
     int world_border;
-    int brush_color;
     int disable_colors;
     double shade_steps_degree;
 
@@ -119,7 +119,6 @@ calc_sun(struct sun *sun)
 void
 screen_init(struct screen *s)
 {
-    s->brush_color = PIXEL_NORMAL;
     s->project = project_equirect;
     s->sun.active = 0;
     s->solid_land = 0;
@@ -130,16 +129,29 @@ screen_init(struct screen *s)
 }
 
 int
-screen_init_data(struct screen *s, int width, int height)
+screen_init_img(struct screen *s, int width, int height)
 {
     s->width = width;
     s->height = height;
-    s->data = calloc(1, width * height);
-    if (s->data == NULL)
+
+    s->img = gdImageCreate(s->width, s->height);
+    if (s->img == NULL)
     {
-        fprintf(stderr, "Out of memory in screen_init()\n");
+        fprintf(stderr, "Could not create image of size %dx%d.\n",
+                s->width, s->height);
         return 0;
     }
+
+    s->col_black = gdImageColorAllocate(s->img, 0, 0, 0);
+    s->col_normal = gdImageColorAllocate(s->img, 0, 0, 1);
+    s->col_dark1 = gdImageColorAllocate(s->img, 0, 0, 2);
+    s->col_dark2 = gdImageColorAllocate(s->img, 0, 0, 3);
+    s->col_dark3 = gdImageColorAllocate(s->img, 0, 0, 4);
+    s->col_highlight = gdImageColorAllocate(s->img, 0, 1, 0);
+    s->col_sun = gdImageColorAllocate(s->img, 0, 2, 0);
+    s->col_sun_border = gdImageColorAllocate(s->img, 0, 2, 0);
+    s->col_line = gdImageColorAllocate(s->img, 0, 3, 0);
+
     return 1;
 }
 
@@ -154,7 +166,7 @@ void
 screen_show_interpreted(struct screen *s, int trailing_newline)
 {
     int x, y, sun_found, is_line, glyph;
-    char a, b, c, d;
+    int a, b, c, d;
     char *charset[] = {  " ",  ".",  ",",  "_",  "'",  "|",  "/",  "J",
                          "`", "\\",  "|",  "L", "\"",  "7",  "r",  "o" };
 
@@ -162,13 +174,13 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
     {
         for (x = 0; x < s->width - 1; x += 2)
         {
-            a = s->data[y * s->width + x];
-            b = s->data[y * s->width + x + 1];
-            c = s->data[(y + 1) * s->width + x];
-            d = s->data[(y + 1) * s->width + x + 1];
+            a = gdImageGetPixel(s->img, x, y);
+            b = gdImageGetPixel(s->img, x + 1, y);
+            c = gdImageGetPixel(s->img, x, y + 1);
+            d = gdImageGetPixel(s->img, x + 1, y + 1);
 
-            if (a == PIXEL_HIGHLIGHT || b == PIXEL_HIGHLIGHT ||
-                c == PIXEL_HIGHLIGHT || d == PIXEL_HIGHLIGHT)
+            if (a == s->col_highlight || b == s->col_highlight ||
+                c == s->col_highlight || d == s->col_highlight)
             {
                 print_color(s, SEQ_LOCATION);
                 printf("X");
@@ -180,25 +192,25 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
 
                 if (s->sun.active)
                 {
-                    if (a == PIXEL_SUN || b == PIXEL_SUN ||
-                        c == PIXEL_SUN || d == PIXEL_SUN)
+                    if (a == s->col_sun || b == s->col_sun ||
+                        c == s->col_sun || d == s->col_sun)
                     {
                         sun_found = 1;
                         print_color(s, SEQ_SUN);
                         printf("S");
                         print_color(s, SEQ_RESET);
                     }
-                    else if (a == PIXEL_SUN_BORDER || b == PIXEL_SUN_BORDER ||
-                             c == PIXEL_SUN_BORDER || d == PIXEL_SUN_BORDER)
+                    else if (a == s->col_sun_border || b == s->col_sun_border ||
+                             c == s->col_sun_border || d == s->col_sun_border)
                         print_color(s, SEQ_SUN_BORDER);
-                    else if (a == PIXEL_DARK1 || b == PIXEL_DARK1 ||
-                             c == PIXEL_DARK1 || d == PIXEL_DARK1)
+                    else if (a == s->col_dark1 || b == s->col_dark1 ||
+                             c == s->col_dark1 || d == s->col_dark1)
                         print_color(s, SEQ_DARK1);
-                    else if (a == PIXEL_DARK2 || b == PIXEL_DARK2 ||
-                             c == PIXEL_DARK2 || d == PIXEL_DARK2)
+                    else if (a == s->col_dark2 || b == s->col_dark2 ||
+                             c == s->col_dark2 || d == s->col_dark2)
                         print_color(s, SEQ_DARK2);
-                    else if (a == PIXEL_DARK3 || b == PIXEL_DARK3 ||
-                             c == PIXEL_DARK3 || d == PIXEL_DARK3)
+                    else if (a == s->col_dark3 || b == s->col_dark3 ||
+                             c == s->col_dark3 || d == s->col_dark3)
                         print_color(s, SEQ_DARK3);
                     else
                         print_color(s, SEQ_NORMAL);
@@ -208,8 +220,8 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                 {
                     is_line = 0;
 
-                    if (a == PIXEL_LINE || b == PIXEL_LINE ||
-                        c == PIXEL_LINE || d == PIXEL_LINE)
+                    if (a == s->col_line || b == s->col_line ||
+                        c == s->col_line || d == s->col_line)
                     {
                         is_line = 1;
                         print_color(s, SEQ_RESET);
@@ -230,68 +242,6 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
 }
 
 void
-screen_set_pixel(struct screen *s, int x, int y, char val)
-{
-    if (x >= 0 && y >= 0 && x < s->width && y < s->height)
-        s->data[y * s->width + x] = val;
-}
-
-void
-screen_draw_line(struct screen *s, int x1, int y1, int x2, int y2)
-{
-    /* TODO: Replace with libgd as well? We might then kick our custom
-     * framebuffer ... */
-
-    int x, y, t, dx, dy, incx, incy, pdx, pdy, es, el, err;
-
-    dx = x2 - x1;
-    dy = y2 - y1;
-
-    incx = dx < 0 ? -1 : 1;
-    incy = dy < 0 ? -1 : 1;
-
-    dx = dx < 0 ? -dx : dx;
-    dy = dy < 0 ? -dy : dy;
-
-    if (dx > dy)
-    {
-        pdx = incx;
-        pdy = 0;
-        es = dy;
-        el = dx;
-    }
-    else
-    {
-        pdx = 0;
-        pdy = incy;
-        es = dx;
-        el = dy;
-    }
-
-    x = x1;
-    y = y1;
-    err = el / 2;
-    screen_set_pixel(s, x, y, s->brush_color);
-
-    for (t = 0; t < el; t++)
-    {
-        err -= es;
-        if (err < 0)
-        {
-            err += el;
-            x += incx;
-            y += incy;
-        }
-        else
-        {
-            x += pdx;
-            y += pdy;
-        }
-        screen_set_pixel(s, x, y, s->brush_color);
-    }
-}
-
-void
 screen_draw_line_projected(struct screen *s, double lon1, double lat1,
                            double lon2, double lat2)
 {
@@ -303,7 +253,7 @@ screen_draw_line_projected(struct screen *s, double lon1, double lat1,
     if ((int)x1 == (int)x2 && (int)y1 == (int)y2)
         return;
 
-    screen_draw_line(s, x1, y1, x2, y2);
+    gdImageLine(s->img, x1, y1, x2, y2, s->brush);
 }
 
 int
@@ -326,19 +276,12 @@ int
 screen_draw_map(struct screen *s, char *file)
 {
     int ret = 1;
-    int i, n, t, v, p, vpoly, white, black, ori;
-    int x, y;
+    int i, n, t, v, p, vpoly, ori;
     double x1, y1;
     double vori[6] = { 0 };
     gdPoint *polypoints = NULL;
     SHPHandle h;
     SHPObject *o;
-    gdImagePtr img;
-
-    img = gdImageCreate(s->width, s->height);
-    black = gdImageColorAllocate(img, 0, 0, 0);
-    (void)black;  /* only needed to set background */
-    white = gdImageColorAllocate(img, 255, 255, 255);
 
     h = SHPOpen(file, "rb");
     if (h == NULL)
@@ -391,10 +334,12 @@ screen_draw_map(struct screen *s, char *file)
                 if (p != 0)
                 {
                     if (s->solid_land)
-                        gdImageFilledPolygon(img, polypoints, vpoly,
-                                             ori > 0 && o->nParts > 1 ? black : white);
+                        gdImageFilledPolygon(s->img, polypoints, vpoly,
+                                             ori > 0 && o->nParts > 1 ?
+                                                s->col_black :
+                                                s->col_normal);
                     else
-                        gdImagePolygon(img, polypoints, vpoly, white);
+                        gdImagePolygon(s->img, polypoints, vpoly, s->col_normal);
                 }
 
                 /* Start of part number "p" */
@@ -440,19 +385,15 @@ screen_draw_map(struct screen *s, char *file)
         }
 
         if (s->solid_land)
-            gdImageFilledPolygon(img, polypoints, vpoly,
-                                 ori > 0 && o->nParts > 1 ? black : white);
+            gdImageFilledPolygon(s->img, polypoints, vpoly,
+                                 ori > 0 && o->nParts > 1 ?
+                                    s->col_black :
+                                    s->col_normal);
         else
-            gdImagePolygon(img, polypoints, vpoly, white);
+            gdImagePolygon(s->img, polypoints, vpoly, s->col_normal);
 
         SHPDestroyObject(o);
     }
-
-    for (y = 0; y < s->height; y++)
-        for (x = 0; x < s->width; x++)
-            screen_set_pixel(s, x, y, gdImageGetPixel(img, x, y) ? s->brush_color : 0);
-
-    gdImageDestroy(img);
 
 cleanout:
     SHPClose(h);
@@ -484,8 +425,7 @@ screen_mark_locations(struct screen *s, char *file)
         if (scanret == 2)
         {
             (s->project)(s, lon, lat, &sx, &sy);
-
-            s->data[(int)sy * s->width + (int)sx] = PIXEL_HIGHLIGHT;
+            gdImageSetPixel(s->img, sx, sy, s->col_highlight);
         }
     }
 
@@ -500,8 +440,7 @@ screen_mark_sun(struct screen *s)
     double x, y;
 
     (s->project)(s, s->sun.lon, s->sun.lat, &x, &y);
-
-    s->data[(int)y * s->width + (int)x] = PIXEL_SUN;
+    gdImageSetPixel(s->img, x, y, s->col_sun);
 }
 
 void
@@ -512,7 +451,7 @@ screen_mark_sun_border(struct screen *s)
     double iscaled_smooth = 20;
     int i, steps = 128, modif;
 
-    s->brush_color = PIXEL_SUN_BORDER;
+    s->brush = s->col_sun_border;
 
     /* Again, see german notes in "sonnenstand.txt". */
 
@@ -602,7 +541,7 @@ screen_mark_sun_border(struct screen *s)
 void
 screen_shade_map(struct screen *s)
 {
-    int black, dark1, dark2, dark3, normal, shade;
+    int black, dark1, dark2, dark3, normal, shade, orig;
     int ix, iy;
     gdImagePtr img;
     double phi, lambda, phi_sun, lambda_sun, zeta, aspan;
@@ -665,19 +604,22 @@ screen_shade_map(struct screen *s)
         }
     }
 
-    /* Use as overlay for unshaded map. Mind the multiplication: This
-     * only works because PIXEL_NORMAL and PIXEL_DARK* are chosen
-     * accordingly. */
+    /* Use img as overlay for s->img. Since these are two different
+     * images with two different color spaces, we have to use "if". */
     for (iy = 0; iy < s->height; iy++)
     {
         for (ix = 0; ix < s->width; ix++)
         {
-            if (gdImageGetPixel(img, ix, iy) == dark1)
-                s->data[iy * s->width + ix] *= 2;
-            else if (gdImageGetPixel(img, ix, iy) == dark2)
-                s->data[iy * s->width + ix] *= 3;
-            else if (gdImageGetPixel(img, ix, iy) == dark3)
-                s->data[iy * s->width + ix] *= 4;
+            orig = gdImageGetPixel(s->img, ix, iy);
+            if (orig != s->col_black)
+            {
+                if (gdImageGetPixel(img, ix, iy) == dark1)
+                    gdImageSetPixel(s->img, ix, iy, s->col_dark1);
+                else if (gdImageGetPixel(img, ix, iy) == dark2)
+                    gdImageSetPixel(s->img, ix, iy, s->col_dark2);
+                else if (gdImageGetPixel(img, ix, iy) == dark3)
+                    gdImageSetPixel(s->img, ix, iy, s->col_dark3);
+            }
         }
     }
 
@@ -689,7 +631,7 @@ screen_draw_world_border(struct screen *s)
 {
     int i, steps = 128;
 
-    s->brush_color = PIXEL_LINE;
+    s->brush = s->col_line;
 
     for (i = 0; i < steps; i++)
     {
@@ -796,7 +738,7 @@ main(int argc, char **argv)
 
     if (s.sun.active)
         calc_sun(&s.sun);
-    if (!screen_init_data(&s, 2 * w.ws_col, 2 * w.ws_row))
+    if (!screen_init_img(&s, 2 * w.ws_col, 2 * w.ws_row))
         exit(EXIT_FAILURE);
     if (!screen_draw_map(&s, map))
         exit(EXIT_FAILURE);
