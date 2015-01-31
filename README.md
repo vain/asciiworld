@@ -46,7 +46,7 @@ Command line options
 
 `-b`: Draw a border around the projected world. This can be useful for some projections.
 
-`-C`: Disable colors.
+`-c n`: Set to n colors. Accepts 0 or 8. Default is 256.
 
 `-o`: Draw land masses as filled polygons. You'll get garbled results when using this together with country borders.
 

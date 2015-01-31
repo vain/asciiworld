@@ -17,38 +17,36 @@
 #define PIXEL_SUN_BORDER 5
 #define PIXEL_LINE 6
 
-/* TODO: Detect this at runtime. */
-#define HAVE_256_COLORS
-
-#ifdef HAVE_256_COLORS
-#define SEQ_LOCATION "\033[31;1m"
-#define SEQ_SUN "\033[33m"
-#define SEQ_SUN_BORDER "\033[36m"
-#define SEQ_DARK1 "\033[38;5;17m"
-#define SEQ_DARK2 "\033[38;5;27m"
-#define SEQ_DARK3 "\033[38;5;37m"
-#define SEQ_NORMAL "\033[38;5;76m"
-#define SEQ_LINE "\033[37m"
-#define SEQ_RESET "\033[0m"
-#else
-#define SEQ_LOCATION "\033[31;1m"
-#define SEQ_SUN "\033[33m"
-#define SEQ_SUN_BORDER "\033[36m"
-#define SEQ_DARK1 "\033[34m"
-#define SEQ_DARK2 "\033[34;1m"
-#define SEQ_DARK3 "\033[32m"
-#define SEQ_NORMAL "\033[32;1m"
-#define SEQ_LINE "\033[37m"
-#define SEQ_RESET "\033[0m"
-#endif
-
 #define DEG_2_RAD (M_PI / 180.0)
 #define RAD_2_DEG (180.0 / M_PI)
+
+enum sequence { SEQ_RESET, SEQ_LOCATION, SEQ_SUN, SEQ_SUN_BORDER, SEQ_DARK1,
+                SEQ_DARK2, SEQ_DARK3, SEQ_NORMAL, SEQ_LINE };
+char *seq_256colors[] = { "\033[0m",         /* reset */
+                          "\033[31;1m",      /* location */
+                          "\033[33m",        /* sun */
+                          "\033[36m",        /* sun border */
+                          "\033[38;5;17m",   /* dark1 */
+                          "\033[38;5;27m",   /* dark2 */
+                          "\033[38;5;37m",   /* dark3 */
+                          "\033[38;5;76m",   /* normal */
+                          "\033[37m" };      /* line */
+char *seq_8colors[] = { "\033[0m",           /* reset */
+                        "\033[31;1m",        /* location */
+                        "\033[33m",          /* sun */
+                        "\033[36m",          /* sun border */
+                        "\033[34m",          /* dark1 */
+                        "\033[34;1m",        /* dark2 */
+                        "\033[32m",          /* dark3 */
+                        "\033[32;1m",        /* normal */
+                        "\033[37m" };        /* line */
 
 struct screen
 {
     int width, height;
     char *data;
+
+    char **esc_seq;
 
     int solid_land;
     int world_border;
@@ -128,6 +126,7 @@ screen_init(struct screen *s)
     s->world_border = 0;
     s->disable_colors = 0;
     s->shade_steps_degree = 1;  /* TODO: Make this an option? */
+    s->esc_seq = seq_256colors;
 }
 
 int
@@ -145,10 +144,10 @@ screen_init_data(struct screen *s, int width, int height)
 }
 
 void
-print_color(struct screen *s, char *str)
+print_color(struct screen *s, enum sequence seq)
 {
     if (!s->disable_colors)
-        printf("%s", str);
+        printf("%s", s->esc_seq[seq]);
 }
 
 void
@@ -213,7 +212,8 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                         c == PIXEL_LINE || d == PIXEL_LINE)
                     {
                         is_line = 1;
-                        print_color(s, SEQ_RESET SEQ_LINE);
+                        print_color(s, SEQ_RESET);
+                        print_color(s, SEQ_LINE);
                     }
 
                     glyph = (!!a << 3) | (!!b << 2) | (!!c << 1) | !!d;
@@ -734,7 +734,7 @@ main(int argc, char **argv)
     struct screen s;
     struct winsize w;
     int trailing_newline = 1;
-    int opt;
+    int opt, c;
     char *map = "ne_110m_land.shp";
     char *highlight_locations = NULL;
 
@@ -748,7 +748,7 @@ main(int argc, char **argv)
 
     screen_init(&s);
 
-    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bCo")) != -1)
+    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bc:o")) != -1)
     {
         switch (opt)
         {
@@ -779,8 +779,12 @@ main(int argc, char **argv)
             case 'b':
                 s.world_border = 1;
                 break;
-            case 'C':
-                s.disable_colors = 1;
+            case 'c':
+                c = atoi(optarg);
+                if (c == 0)
+                    s.disable_colors = 1;
+                else if (c == 8)
+                    s.esc_seq = seq_8colors;
                 break;
             case 'o':
                 s.solid_land = 1;
