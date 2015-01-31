@@ -2,7 +2,10 @@ Having a little bit of fun.
 
 ![asciiworld](/asciiworld.png?raw=true)
 
-Inspired by the world map in [blessed-contrib](https://github.com/yaronn/blessed-contrib).
+Inspired by:
+
+*  The world map in [blessed-contrib](https://github.com/yaronn/blessed-contrib)
+*  Fancy stuff in [trehn's termtrack](https://github.com/trehn/termtrack)
 
 Dependencies
 ============
