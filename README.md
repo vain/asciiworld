@@ -36,7 +36,9 @@ Command line options
     50 8
     -33.9 18.4
 
-`-s`: Turn on "day-and-night" mode. Areas that are currently lit by the sun will be shown as yellow, whereas the other parts are shown as dark grey. The "position" of the sun itself will be marked with an "S".
+`-s`: Turn on "day-and-night" mode. Areas that are currently lit by the sun will be shown as green, whereas the other parts are shown as dark dark blue. Areas currently in the "twilight zone" will be shaded accordingly (see `-d`). The "position" of the sun itself will be marked with an "S". A yellow line marks the current sunset/sunrise locations.
+
+`-d dusk`: Choose definition of "dusk" and thus the twilight span. Accepts "nau" for nautical dusk (12 degree twilight) or "ast" for astronomical dusk (18 degree twilight). By default, civil dusk (6 degree twilight) is used.
 
 `-T`: Do not print the final newline to avoid scrolling. Using `-sT`, you can show a continuously updated map in "day-and-night" mode:
 
@@ -53,14 +55,11 @@ Command line options
 
 `-o`: Draw land masses as filled polygons. You'll get garbled results when using this together with country borders.
 
-`-d dusk`: Choose definition of "dusk" and thus the twilight span. Accepts "nau" for nautical dusk (12 degree twilight) or "ast" for astronomical dusk (18 degree twilight). By default, civil dusk (6 degree twilight) is used.
-
 More ideas
 ==========
 
-*  Zoom/pan/crop.
-*  Highlight areas.
-*  Highlight countries.
+*  Zoom/pan
+*  Render arbitrary lines or orbits
 
 CREDITS
 =======
