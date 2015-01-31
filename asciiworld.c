@@ -735,7 +735,7 @@ main(int argc, char **argv)
     char *map = "ne_110m_land.shp";
     char *highlight_locations = NULL;
     char *outimg = NULL;
-    FILE *fd = NULL;
+    FILE *fp = NULL;
 
     if (isatty(STDOUT_FILENO))
         ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
@@ -825,13 +825,13 @@ main(int argc, char **argv)
         screen_show_interpreted(&s, trailing_newline);
     else
     {
-        fd = fopen(outimg, "w");
-        if (fd == NULL)
+        fp = fopen(outimg, "w");
+        if (fp == NULL)
             perror("Opening output file failed");
         else
         {
-            gdImagePng(s.img, fd);
-            fclose(fd);
+            gdImagePng(s.img, fp);
+            fclose(fp);
         }
 
     }
