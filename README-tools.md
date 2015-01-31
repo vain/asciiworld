@@ -5,6 +5,8 @@ This, again, is very much influenced by [trehn's termtrack](https://github.com/t
 
 You need [pyephem](http://rhodesmill.org/pyephem/).
 
+![tracksats](/tracksats.png?raw=true)
+
 getsat
 ------
 
