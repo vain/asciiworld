@@ -441,43 +441,10 @@ int
 screen_mark_locations(struct screen *s, char *file)
 {
     FILE *fp;
-    int scanret = 0;
-    double lat, lon, sx, sy;
-
-    fp = fopen(file, "r");
-    if (fp == NULL)
-    {
-        fprintf(stderr, "Could not open locations file\n");
-        return 0;
-    }
-
-    while (1)
-    {
-        scanret = fscanf(fp, "%lf %lf\n", &lat, &lon);
-
-        if (scanret == EOF)
-            break;
-
-        if (scanret == 2)
-        {
-            (s->project)(s, lon, lat, &sx, &sy);
-            gdImageSetPixel(s->img, sx, sy, s->col_highlight);
-        }
-    }
-
-    fclose(fp);
-
-    return 1;
-}
-
-int
-screen_mark_tracks(struct screen *s, char *file)
-{
-    FILE *fp;
     char *line = NULL;
     size_t line_n = 0;
-    int isFirst = 1, tracki = 0;
-    double lat, lon, sx1, sy1, sx2, sy2;
+    int tracki = -1;
+    double lat, lon, x, y;
 
     fp = fopen(file, "r");
     if (fp == NULL)
@@ -485,29 +452,23 @@ screen_mark_tracks(struct screen *s, char *file)
         fprintf(stderr, "Could not open locations file\n");
         return 0;
     }
+
+    s->brush = s->col_highlight;
 
     while (getline(&line, &line_n, fp) != -1)
     {
-        if (sscanf(line, "%lf %lf\n", &lat, &lon) == 2)
+        if (strncmp(line, "points", strlen("points")) == 0)
+            s->brush = s->col_highlight;
+        else if (strncmp(line, "track", strlen("track")) == 0)
         {
-            if (isFirst)
-            {
-                (s->project)(s, lon, lat, &sx2, &sy2);
-                isFirst = 0;
-            }
-            else
-            {
-                sx1 = sx2;
-                sy1 = sy2;
-                (s->project)(s, lon, lat, &sx2, &sy2);
-                gdImageLine(s->img, sx1, sy1, sx2, sy2, s->col_track[tracki]);
-            }
-        }
-        else if (strncmp(line, ".", 1) == 0)
-        {
-            isFirst = 1;
             tracki++;
             tracki %= 3;
+            s->brush = s->col_track[tracki];
+        }
+        else if (sscanf(line, "%lf %lf\n", &lat, &lon) == 2)
+        {
+            (s->project)(s, lon, lat, &x, &y);
+            gdImageSetPixel(s->img, x, y, s->brush);
         }
     }
 
@@ -761,7 +722,7 @@ main(int argc, char **argv)
     int trailing_newline = 1;
     int opt, c;
     char *map = "ne_110m_land.shp";
-    char *highlight_locations = NULL, *highlight_tracks = NULL;
+    char *highlight_locations = NULL;
     char *outimg = NULL;
     FILE *fd = NULL;
 
@@ -775,7 +736,7 @@ main(int argc, char **argv)
 
     screen_init(&s);
 
-    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bc:od:W:t:")) != -1)
+    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bc:od:W:")) != -1)
     {
         switch (opt)
         {
@@ -790,9 +751,6 @@ main(int argc, char **argv)
                 break;
             case 'l':
                 highlight_locations = optarg;
-                break;
-            case 't':
-                highlight_tracks = optarg;
                 break;
             case 's':
                 s.sun.active = 1;
@@ -847,9 +805,6 @@ main(int argc, char **argv)
     }
     if (s.world_border)
         screen_draw_world_border(&s);
-    if (highlight_tracks != NULL)
-        if (!screen_mark_tracks(&s, highlight_tracks))
-            exit(EXIT_FAILURE);
     if (highlight_locations != NULL)
         if (!screen_mark_locations(&s, highlight_locations))
             exit(EXIT_FAILURE);

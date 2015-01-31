@@ -31,20 +31,19 @@ Command line options
 
 `-m path`: Path to an ESRI Shapefile (.shx or .shp).
 
-`-l path`: Path to a file containing locations to highlight. For example, the following file would highlight Mainz and Cape Town:
+`-l path`: Path to a file containing locations and tracks to highlight. Points are preceeded by a line containing "points", tracks are preceeded by "track". Points are marked with an "X". Tracks are rendered using the common charset but all points on a track have the same distinct color. For example, the following file would highlight Mainz and Cape Town and render two arbitrary tracks:
 
+    points
     50 8
     -33.9 18.4
-
-`-t path`: Path to a file containing one or more tracks to highlight. A track consists of series of spherical coordinates, terminated by a dot. asciiworld will project each point and then render a line, it will NOT interpolate between two points. An example track:
-
+    track
     50 8
     40 20
     30 40
     20 70
     10 90
     1 104
-    .
+    track
     -33.9 18.4
     -40 30
     -50 50
@@ -52,7 +51,8 @@ Command line options
     -50 110
     -40 130
     -33.9 151.1
-    .
+
+Note that, for the time being, asciiworld draws tracks as points, too. To create the illusion of a connected line, you should simply provide enough points. :-)
 
 `-s`: Turn on "day-and-night" mode. Areas that are currently lit by the sun will be shown as green, whereas the other parts are shown as dark dark blue. Areas currently in the "twilight zone" will be shaded accordingly (see `-d`). The "position" of the sun itself will be marked with an "S". A yellow line marks the current sunset/sunrise locations.
 
