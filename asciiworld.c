@@ -15,7 +15,7 @@ enum sequence { SEQ_RESET, SEQ_LOCATION, SEQ_SUN, SEQ_SUN_BORDER, SEQ_SHADE1,
                 SEQ_SHADE2, SEQ_SHADE3, SEQ_SHADE4, SEQ_SHADE5, SEQ_SHADE6,
                 SEQ_SHADE7, SEQ_SHADE8, SEQ_LINE, SEQ_TRACK1, SEQ_TRACK2,
                 SEQ_TRACK3 };
-char *seq_256colors[] = { "\033[0m\033[48;5;16m",  /* reset */
+char *seq_256colors[] = { "\033[0m",               /* reset */
                           "\033[38;5;196m",        /* location */
                           "\033[38;5;220m",        /* sun */
                           "\033[38;5;220m",        /* sun border */
@@ -31,7 +31,7 @@ char *seq_256colors[] = { "\033[0m\033[48;5;16m",  /* reset */
                           "\033[38;5;201m",        /* track1 */
                           "\033[38;5;255m",        /* track2 */
                           "\033[38;5;202m" };      /* track3 */
-char *seq_8colors[] = { "\033[0m\033[40m",         /* reset */
+char *seq_8colors[] = { "\033[0m",                 /* reset */
                         "\033[31;1m",              /* location */
                         "\033[33m",                /* sun */
                         "\033[36m",                /* sun border */
@@ -198,8 +198,6 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
     int a, b, c, d;
     char *charset[] = {  " ",  ".",  ",",  "_",  "'",  "|",  "/",  "J",
                          "`", "\\",  "|",  "L", "\"",  "7",  "r",  "o" };
-
-    print_color(s, SEQ_RESET);
 
     for (y = 0; y < s->height - 1; y += 2)
     {
