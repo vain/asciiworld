@@ -1,0 +1,26 @@
+#!/bin/bash
+
+observer=$1
+shift
+
+tmpdir=$(mktemp -d)
+
+mkdir "$tmpdir"/sat
+for i
+do
+	./getsat "$i" >"$tmpdir"/sat/"$i".tle
+done
+
+tput civis
+trap 'tput cnorm; rm -Rf "$tmpdir"' EXIT
+while true
+do
+	echo -e "points\n$observer" >"$tmpdir"/loc
+	for i in "$tmpdir"/sat/*
+	do
+		./calcsat <"$i" >>"$tmpdir"/loc
+	done
+	./asciiworld -Tosl "$tmpdir"/loc
+	sleep 0.5
+	tput home
+done

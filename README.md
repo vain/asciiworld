@@ -7,6 +7,8 @@ Inspired by:
 *  The world map in [blessed-contrib](https://github.com/yaronn/blessed-contrib)
 *  Fancy stuff in [trehn's termtrack](https://github.com/trehn/termtrack)
 
+asciiworld is just the core program that renders the map. You can combine it with other tools, some of which are included in this repository. See README-tools.md.
+
 Dependencies
 ============
 

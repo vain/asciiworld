@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+
+
+# Courtesy of trehn's termtrack:
+# https://github.com/trehn/termtrack
+
+
+import datetime
+import ephem
+import sys
+
+
+def deg(rad):
+    return rad * 180.0 / ephem.pi
+
+
+lines = sys.stdin.read().strip().splitlines()
+
+sat = ephem.readtle(*lines)
+
+sat.compute(datetime.datetime.utcnow())
+lon = sat.sublong
+lat = sat.sublat
+print('points')
+print('{:f} {:f}'.format(deg(lat), deg(lon)))
+
+print('track')
+orbital_period = datetime.timedelta(days=1) / sat._n
+orbit_offset = datetime.timedelta()
+while orbit_offset < orbital_period:
+    orbit_offset += orbital_period / 150
+    sat.compute(datetime.datetime.utcnow() + orbit_offset)
+    print('{:f} {:f}'.format(deg(sat.sublat), deg(sat.sublong)))
+
+print('track')
+orbit_offset = datetime.timedelta()
+while orbit_offset > -0.05 * orbital_period:
+    orbit_offset -= orbital_period / 150
+    sat.compute(datetime.datetime.utcnow() + orbit_offset)
+    print('{:f} {:f}'.format(deg(sat.sublat), deg(sat.sublong)))

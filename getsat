@@ -1,0 +1,4 @@
+#!/bin/bash
+
+curl -s "http://www.celestrak.com/cgi-bin/TLE.pl?CATNR=$1" |
+sed -n '/<PRE>/,/<\/PRE>/p' | sed '1d; $d'
