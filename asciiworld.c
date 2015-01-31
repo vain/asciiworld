@@ -218,6 +218,16 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
             else
             {
                 sun_found = 0;
+                have_track = 0;
+
+                for (i = 0; i < 3; i++)
+                    if (a == s->col_track[i] || b == s->col_track[i] ||
+                        c == s->col_track[i] || d == s->col_track[i])
+                    {
+                        print_color(s, SEQ_TRACK1 + i);
+                        have_track = 1;
+                        break;
+                    }
 
                 if (s->sun.active)
                 {
@@ -232,30 +242,14 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                     else if (a == s->col_sun_border || b == s->col_sun_border ||
                              c == s->col_sun_border || d == s->col_sun_border)
                         print_color(s, SEQ_SUN_BORDER);
-                    else
-                    {
-                        have_track = 0;
-                        for (i = 0; i < 3; i++)
-                        {
-                            if (a == s->col_track[i] || b == s->col_track[i] ||
-                                c == s->col_track[i] || d == s->col_track[i])
+                    else if (!have_track)
+                        for (i = 0; i < 8; i++)
+                            if (a == s->col_shade[i] || b == s->col_shade[i] ||
+                                c == s->col_shade[i] || d == s->col_shade[i])
                             {
-                                print_color(s, SEQ_TRACK1 + i);
-                                have_track = 1;
+                                print_color(s, SEQ_SHADE1 + i);
                                 break;
                             }
-                        }
-                        if (!have_track)
-                            for (i = 0; i < 8; i++)
-                            {
-                                if (a == s->col_shade[i] || b == s->col_shade[i] ||
-                                    c == s->col_shade[i] || d == s->col_shade[i])
-                                {
-                                    print_color(s, SEQ_SHADE1 + i);
-                                    break;
-                                }
-                            }
-                    }
                 }
 
                 if (!sun_found)
@@ -273,7 +267,7 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                     glyph = (!!a << 3) | (!!b << 2) | (!!c << 1) | !!d;
                     printf("%s", charset[glyph]);
 
-                    if (s->sun.active || is_line)
+                    if (s->sun.active || is_line || have_track)
                         print_color(s, SEQ_RESET);
                 }
             }
