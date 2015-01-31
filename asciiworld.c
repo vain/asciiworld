@@ -153,16 +153,21 @@ screen_init_img(struct screen *s, int width, int height)
         return 0;
     }
 
+    /* For ASCII output, these colors have no meaning. They're only
+     * relevant if you're saving as PNG. Internally, we only use the
+     * integers that libgd assigns to each color. */
     s->col_black = gdImageColorAllocate(s->img, 0, 0, 0);
-    s->col_normal = gdImageColorAllocate(s->img, 0, 0, 1);
+    s->col_normal = gdImageColorAllocate(s->img, 200, 200, 200);
     for (i = 0; i < 8; i++)
     {
-        s->col_shade[i] = gdImageColorAllocate(s->img, 0, 0, 2 + i);
+        s->col_shade[i] = gdImageColorAllocate(s->img, 0,
+                                               255 * i / 7.0,
+                                               255 * (7 - i) / 7.0);
     }
-    s->col_highlight = gdImageColorAllocate(s->img, 0, 1, 0);
-    s->col_sun = gdImageColorAllocate(s->img, 0, 2, 0);
-    s->col_sun_border = gdImageColorAllocate(s->img, 0, 2, 0);
-    s->col_line = gdImageColorAllocate(s->img, 0, 3, 0);
+    s->col_highlight = gdImageColorAllocate(s->img, 255, 0, 0);
+    s->col_sun = gdImageColorAllocate(s->img, 255, 255, 0);
+    s->col_sun_border = gdImageColorAllocate(s->img, 255, 255, 0);
+    s->col_line = gdImageColorAllocate(s->img, 255, 255, 255);
 
     return 1;
 }
@@ -694,6 +699,8 @@ main(int argc, char **argv)
     int opt, c;
     char *map = "ne_110m_land.shp";
     char *highlight_locations = NULL;
+    char *outimg = NULL;
+    FILE *fd = NULL;
 
     if (isatty(STDOUT_FILENO))
         ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
@@ -705,7 +712,7 @@ main(int argc, char **argv)
 
     screen_init(&s);
 
-    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bc:od:")) != -1)
+    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bc:od:W:")) != -1)
     {
         switch (opt)
         {
@@ -752,6 +759,9 @@ main(int argc, char **argv)
                 else if (strncmp(optarg, "ast", 3) == 0)
                     s.dusk_degree = 18;
                 break;
+            case 'W':
+                outimg = optarg;
+                break;
             default:
                 exit(EXIT_FAILURE);
         }
@@ -759,7 +769,8 @@ main(int argc, char **argv)
 
     if (s.sun.active)
         calc_sun(&s.sun);
-    if (!screen_init_img(&s, 2 * w.ws_col, 2 * w.ws_row))
+    if (!screen_init_img(&s, (outimg == NULL ? 2 : 1) * w.ws_col,
+                         (outimg == NULL ? 2 : 1) * w.ws_row))
         exit(EXIT_FAILURE);
     if (!screen_draw_map(&s, map))
         exit(EXIT_FAILURE);
@@ -775,7 +786,20 @@ main(int argc, char **argv)
             exit(EXIT_FAILURE);
     if (s.sun.active)
         screen_mark_sun(&s);
-    screen_show_interpreted(&s, trailing_newline);
+    if (outimg == NULL)
+        screen_show_interpreted(&s, trailing_newline);
+    else
+    {
+        fd = fopen(outimg, "w");
+        if (fd == NULL)
+            perror("Opening output file failed");
+        else
+        {
+            gdImagePng(s.img, fd);
+            fclose(fd);
+        }
+
+    }
 
     exit(EXIT_SUCCESS);
 }

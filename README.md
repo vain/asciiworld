@@ -55,6 +55,8 @@ Command line options
 
 `-o`: Draw land masses as filled polygons. You'll get garbled results when using this together with country borders.
 
+`-W path`: Instead of creating ASCII output, you can save the resulting image as an "uninterpreted" PNG file. You will want to use `-w` and `-h` together with this option.
+
 More ideas
 ==========
 
