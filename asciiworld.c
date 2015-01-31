@@ -124,7 +124,7 @@ screen_init(struct screen *s)
     s->solid_land = 0;
     s->world_border = 0;
     s->disable_colors = 0;
-    s->shade_steps_degree = 1;  /* TODO: Make this an option? */
+    s->shade_steps_degree = 1;
     s->esc_seq = seq_256colors;
 }
 
@@ -566,7 +566,6 @@ screen_shade_map(struct screen *s)
     lambda_sun = s->sun.lon * DEG_2_RAD;
     phi_sun = s->sun.lat * DEG_2_RAD;
 
-    /* TODO: Center patches? Only matters for high resolutions... */
     for (lambda = -180 * DEG_2_RAD; lambda < 180 * DEG_2_RAD - aspan; lambda += aspan)
     {
         for (phi = -90 * DEG_2_RAD; phi < 90 * DEG_2_RAD - aspan; phi += aspan)
