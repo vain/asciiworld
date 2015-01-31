@@ -595,7 +595,7 @@ screen_shade_map(struct screen *s)
              * dusk_degree) or night. */
             d90 = zeta * RAD_2_DEG - 90;
             d90 /= s->dusk_degree;
-            di90 = 8 - (int)round(d90 * 8);
+            di90 = 7 - (int)round(d90 * 7);
             di90 = di90 < 0 ? 0 : di90;
             di90 = di90 > 7 ? 7 : di90;
             shade_brush = shade[di90];
