@@ -22,24 +22,24 @@
 
 enum sequence { SEQ_RESET, SEQ_LOCATION, SEQ_SUN, SEQ_SUN_BORDER, SEQ_DARK1,
                 SEQ_DARK2, SEQ_DARK3, SEQ_NORMAL, SEQ_LINE };
-char *seq_256colors[] = { "\033[0m",         /* reset */
-                          "\033[31;1m",      /* location */
-                          "\033[33m",        /* sun */
-                          "\033[36m",        /* sun border */
-                          "\033[38;5;17m",   /* dark1 */
-                          "\033[38;5;27m",   /* dark2 */
-                          "\033[38;5;37m",   /* dark3 */
-                          "\033[38;5;76m",   /* normal */
-                          "\033[37m" };      /* line */
-char *seq_8colors[] = { "\033[0m",           /* reset */
-                        "\033[31;1m",        /* location */
-                        "\033[33m",          /* sun */
-                        "\033[36m",          /* sun border */
-                        "\033[34m",          /* dark1 */
-                        "\033[34;1m",        /* dark2 */
-                        "\033[32m",          /* dark3 */
-                        "\033[32;1m",        /* normal */
-                        "\033[37m" };        /* line */
+char *seq_256colors[] = { "\033[0m",           /* reset */
+                          "\033[38;5;196m",    /* location */
+                          "\033[38;5;214m",    /* sun */
+                          "\033[38;5;33m",     /* sun border */
+                          "\033[38;5;17m",     /* dark1 */
+                          "\033[38;5;27m",     /* dark2 */
+                          "\033[38;5;37m",     /* dark3 */
+                          "\033[38;5;76m",     /* normal */
+                          "\033[38;5;255m" };  /* line */
+char *seq_8colors[] = { "\033[0m",             /* reset */
+                        "\033[31;1m",          /* location */
+                        "\033[33m",            /* sun */
+                        "\033[36m",            /* sun border */
+                        "\033[34m",            /* dark1 */
+                        "\033[34;1m",          /* dark2 */
+                        "\033[32m",            /* dark3 */
+                        "\033[32;1m",          /* normal */
+                        "\033[37m" };          /* line */
 
 struct screen
 {
