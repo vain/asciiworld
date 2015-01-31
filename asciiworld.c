@@ -11,25 +11,34 @@
 #define DEG_2_RAD (M_PI / 180.0)
 #define RAD_2_DEG (180.0 / M_PI)
 
-enum sequence { SEQ_RESET, SEQ_LOCATION, SEQ_SUN, SEQ_SUN_BORDER, SEQ_DARK1,
-                SEQ_DARK2, SEQ_DARK3, SEQ_NORMAL, SEQ_LINE };
+enum sequence { SEQ_RESET, SEQ_LOCATION, SEQ_SUN, SEQ_SUN_BORDER, SEQ_SHADE1,
+                SEQ_SHADE2, SEQ_SHADE3, SEQ_SHADE4, SEQ_SHADE5, SEQ_SHADE6,
+                SEQ_SHADE7, SEQ_SHADE8, SEQ_LINE };
 char *seq_256colors[] = { "\033[0m",           /* reset */
                           "\033[38;5;196m",    /* location */
-                          "\033[38;5;214m",    /* sun */
-                          "\033[38;5;33m",     /* sun border */
-                          "\033[38;5;17m",     /* dark1 */
-                          "\033[38;5;27m",     /* dark2 */
-                          "\033[38;5;37m",     /* dark3 */
-                          "\033[38;5;76m",     /* normal */
+                          "\033[38;5;220m",    /* sun */
+                          "\033[38;5;220m",    /* sun border */
+                          "\033[38;5;17m",     /* shade1 */
+                          "\033[38;5;19m",     /* shade2 */
+                          "\033[38;5;21m",     /* shade3 */
+                          "\033[38;5;26m",     /* shade4 */
+                          "\033[38;5;30m",     /* shade5 */
+                          "\033[38;5;35m",     /* shade6 */
+                          "\033[38;5;40m",     /* shade7 */
+                          "\033[38;5;46m",     /* shade8 */
                           "\033[38;5;255m" };  /* line */
 char *seq_8colors[] = { "\033[0m",             /* reset */
                         "\033[31;1m",          /* location */
                         "\033[33m",            /* sun */
                         "\033[36m",            /* sun border */
-                        "\033[34m",            /* dark1 */
-                        "\033[34;1m",          /* dark2 */
-                        "\033[32m",            /* dark3 */
-                        "\033[32;1m",          /* normal */
+                        "\033[34m",            /* shade1 */
+                        "\033[34m",            /* shade2 */
+                        "\033[34;1m",          /* shade3 */
+                        "\033[34;1m",          /* shade4 */
+                        "\033[32m",            /* shade5 */
+                        "\033[32m",            /* shade6 */
+                        "\033[32;1m",          /* shade7 */
+                        "\033[32;1m",          /* shade8 */
                         "\033[37m" };          /* line */
 
 struct screen
@@ -38,9 +47,7 @@ struct screen
     gdImagePtr img;
     int col_black;
     int col_normal;
-    int col_dark1;
-    int col_dark2;
-    int col_dark3;
+    int col_shade[8];
     int col_highlight;
     int col_sun;
     int col_sun_border;
@@ -131,6 +138,8 @@ screen_init(struct screen *s)
 int
 screen_init_img(struct screen *s, int width, int height)
 {
+    int i;
+
     s->width = width;
     s->height = height;
 
@@ -144,9 +153,10 @@ screen_init_img(struct screen *s, int width, int height)
 
     s->col_black = gdImageColorAllocate(s->img, 0, 0, 0);
     s->col_normal = gdImageColorAllocate(s->img, 0, 0, 1);
-    s->col_dark1 = gdImageColorAllocate(s->img, 0, 0, 2);
-    s->col_dark2 = gdImageColorAllocate(s->img, 0, 0, 3);
-    s->col_dark3 = gdImageColorAllocate(s->img, 0, 0, 4);
+    for (i = 0; i < 8; i++)
+    {
+        s->col_shade[i] = gdImageColorAllocate(s->img, 0, 0, 2 + i);
+    }
     s->col_highlight = gdImageColorAllocate(s->img, 0, 1, 0);
     s->col_sun = gdImageColorAllocate(s->img, 0, 2, 0);
     s->col_sun_border = gdImageColorAllocate(s->img, 0, 2, 0);
@@ -165,7 +175,7 @@ print_color(struct screen *s, enum sequence seq)
 void
 screen_show_interpreted(struct screen *s, int trailing_newline)
 {
-    int x, y, sun_found, is_line, glyph;
+    int x, y, i, sun_found, is_line, glyph;
     int a, b, c, d;
     char *charset[] = {  " ",  ".",  ",",  "_",  "'",  "|",  "/",  "J",
                          "`", "\\",  "|",  "L", "\"",  "7",  "r",  "o" };
@@ -203,17 +213,18 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                     else if (a == s->col_sun_border || b == s->col_sun_border ||
                              c == s->col_sun_border || d == s->col_sun_border)
                         print_color(s, SEQ_SUN_BORDER);
-                    else if (a == s->col_dark1 || b == s->col_dark1 ||
-                             c == s->col_dark1 || d == s->col_dark1)
-                        print_color(s, SEQ_DARK1);
-                    else if (a == s->col_dark2 || b == s->col_dark2 ||
-                             c == s->col_dark2 || d == s->col_dark2)
-                        print_color(s, SEQ_DARK2);
-                    else if (a == s->col_dark3 || b == s->col_dark3 ||
-                             c == s->col_dark3 || d == s->col_dark3)
-                        print_color(s, SEQ_DARK3);
                     else
-                        print_color(s, SEQ_NORMAL);
+                    {
+                        for (i = 0; i < 8; i++)
+                        {
+                            if (a == s->col_shade[i] || b == s->col_shade[i] ||
+                                c == s->col_shade[i] || d == s->col_shade[i])
+                            {
+                                print_color(s, SEQ_SHADE1 + i);
+                                break;
+                            }
+                        }
+                    }
                 }
 
                 if (!sun_found)
@@ -541,10 +552,12 @@ screen_mark_sun_border(struct screen *s)
 void
 screen_shade_map(struct screen *s)
 {
-    int black, dark1, dark2, dark3, normal, shade, orig;
-    int ix, iy;
+    int black, shade_brush, orig;
+    int shade[8];
+    int ix, iy, i, di90;
     gdImagePtr img;
     double phi, lambda, phi_sun, lambda_sun, zeta, aspan;
+    double d90;
     double x, y;
     gdPoint polypoints[4];
 
@@ -556,10 +569,8 @@ screen_shade_map(struct screen *s)
     img = gdImageCreate(s->width, s->height);
     black = gdImageColorAllocate(img, 0, 0, 0);
     (void)black;  /* only needed to set background */
-    normal = gdImageColorAllocate(img, 255, 255, 255);
-    dark1 = gdImageColorAllocate(img, 255, 0, 0);
-    dark2 = gdImageColorAllocate(img, 0, 255, 0);
-    dark3 = gdImageColorAllocate(img, 0, 0, 255);
+    for (i = 0; i < 8; i++)
+        shade[i] = gdImageColorAllocate(img, 0, 0, i);
 
     aspan = s->shade_steps_degree * DEG_2_RAD;
 
@@ -577,14 +588,17 @@ screen_shade_map(struct screen *s)
 
             /* TODO: These values "look good". I don't know if they're
              * accurate. */
-            if (zeta > 96 * DEG_2_RAD)
-                shade = dark1;
-            else if (zeta > 90 * DEG_2_RAD)
-                shade = dark2;
-            else if (zeta > 84 * DEG_2_RAD)
-                shade = dark3;
-            else
-                shade = normal;
+            /* See how far away from 90 degree we are (10 deg positive
+             * or negative are shaded). Scale the result into the range
+             * of our 8 colors. */
+            d90 = zeta * RAD_2_DEG - 90;
+            d90 /= 10;
+            d90 += 1;
+            d90 *= 0.5;
+            di90 = 8 - (int)round(d90 * 8);
+            di90 = di90 < 0 ? 0 : di90;
+            di90 = di90 > 7 ? 7 : di90;
+            shade_brush = shade[di90];
 
             (s->project)(s, lambda * RAD_2_DEG, phi * RAD_2_DEG, &x, &y);
             polypoints[0].x = x;
@@ -599,7 +613,7 @@ screen_shade_map(struct screen *s)
             polypoints[3].x = x;
             polypoints[3].y = y;
 
-            gdImageFilledPolygon(img, polypoints, 4, shade);
+            gdImageFilledPolygon(img, polypoints, 4, shade_brush);
         }
     }
 
@@ -612,12 +626,14 @@ screen_shade_map(struct screen *s)
             orig = gdImageGetPixel(s->img, ix, iy);
             if (orig != s->col_black)
             {
-                if (gdImageGetPixel(img, ix, iy) == dark1)
-                    gdImageSetPixel(s->img, ix, iy, s->col_dark1);
-                else if (gdImageGetPixel(img, ix, iy) == dark2)
-                    gdImageSetPixel(s->img, ix, iy, s->col_dark2);
-                else if (gdImageGetPixel(img, ix, iy) == dark3)
-                    gdImageSetPixel(s->img, ix, iy, s->col_dark3);
+                for (i = 0; i < 8; i++)
+                {
+                    if (gdImageGetPixel(img, ix, iy) == shade[i])
+                    {
+                        gdImageSetPixel(s->img, ix, iy, s->col_shade[i]);
+                        break;
+                    }
+                }
             }
         }
     }
