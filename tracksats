@@ -20,7 +20,7 @@ do
 	do
 		./calcsat <"$i" >>"$tmpdir"/loc
 	done
-	./asciiworld -Tosl "$tmpdir"/loc
+	./asciiworld -Tosl "$tmpdir"/loc -d ast
 	sleep 0.5
 	tput home
 done
