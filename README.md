@@ -36,6 +36,24 @@ Command line options
     50 8
     -33.9 18.4
 
+`-t path`: Path to a file containing one or more tracks to highlight. A track consists of series of spherical coordinates, terminated by a dot. asciiworld will project each point and then render a line, it will NOT interpolate between two points. An example track:
+
+    50 8
+    40 20
+    30 40
+    20 70
+    10 90
+    1 104
+    .
+    -33.9 18.4
+    -40 30
+    -50 50
+    -60 80
+    -50 110
+    -40 130
+    -33.9 151.1
+    .
+
 `-s`: Turn on "day-and-night" mode. Areas that are currently lit by the sun will be shown as green, whereas the other parts are shown as dark dark blue. Areas currently in the "twilight zone" will be shaded accordingly (see `-d`). The "position" of the sun itself will be marked with an "S". A yellow line marks the current sunset/sunrise locations.
 
 `-d dusk`: Choose definition of "dusk" and thus the twilight span. Accepts "nau" for nautical dusk (12 degree twilight) or "ast" for astronomical dusk (18 degree twilight). By default, civil dusk (6 degree twilight) is used.

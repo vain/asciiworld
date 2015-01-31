@@ -13,7 +13,8 @@
 
 enum sequence { SEQ_RESET, SEQ_LOCATION, SEQ_SUN, SEQ_SUN_BORDER, SEQ_SHADE1,
                 SEQ_SHADE2, SEQ_SHADE3, SEQ_SHADE4, SEQ_SHADE5, SEQ_SHADE6,
-                SEQ_SHADE7, SEQ_SHADE8, SEQ_LINE };
+                SEQ_SHADE7, SEQ_SHADE8, SEQ_LINE, SEQ_TRACK1, SEQ_TRACK2,
+                SEQ_TRACK3 };
 char *seq_256colors[] = { "\033[0m\033[48;5;16m",  /* reset */
                           "\033[38;5;196m",        /* location */
                           "\033[38;5;220m",        /* sun */
@@ -26,7 +27,10 @@ char *seq_256colors[] = { "\033[0m\033[48;5;16m",  /* reset */
                           "\033[38;5;35m",         /* shade6 */
                           "\033[38;5;40m",         /* shade7 */
                           "\033[38;5;46m",         /* shade8 */
-                          "\033[38;5;255m" };      /* line */
+                          "\033[38;5;255m",        /* line */
+                          "\033[38;5;201m",        /* track1 */
+                          "\033[38;5;255m",        /* track2 */
+                          "\033[38;5;202m" };      /* track3 */
 char *seq_8colors[] = { "\033[0m\033[40m",         /* reset */
                         "\033[31;1m",              /* location */
                         "\033[33m",                /* sun */
@@ -39,7 +43,10 @@ char *seq_8colors[] = { "\033[0m\033[40m",         /* reset */
                         "\033[32m",                /* shade6 */
                         "\033[32;1m",              /* shade7 */
                         "\033[32;1m",              /* shade8 */
-                        "\033[37m" };              /* line */
+                        "\033[37m",                /* line */
+                        "\033[35;1m",              /* track1 */
+                        "\033[35;1m",              /* track2 */
+                        "\033[35;1m" };            /* track3 */
 
 struct screen
 {
@@ -48,6 +55,7 @@ struct screen
     int col_black;
     int col_normal;
     int col_shade[8];
+    int col_track[3];
     int col_highlight;
     int col_sun;
     int col_sun_border;
@@ -164,6 +172,10 @@ screen_init_img(struct screen *s, int width, int height)
                                                255 * i / 7.0,
                                                255 * (7 - i) / 7.0);
     }
+    for (i = 0; i < 3; i++)
+    {
+        s->col_track[i] = gdImageColorAllocate(s->img, 255, 0, 255 * (2 - i) / 2.0);
+    }
     s->col_highlight = gdImageColorAllocate(s->img, 255, 0, 0);
     s->col_sun = gdImageColorAllocate(s->img, 255, 255, 0);
     s->col_sun_border = gdImageColorAllocate(s->img, 255, 255, 0);
@@ -182,7 +194,7 @@ print_color(struct screen *s, enum sequence seq)
 void
 screen_show_interpreted(struct screen *s, int trailing_newline)
 {
-    int x, y, i, sun_found, is_line, glyph;
+    int x, y, i, sun_found, have_track, is_line, glyph;
     int a, b, c, d;
     char *charset[] = {  " ",  ".",  ",",  "_",  "'",  "|",  "/",  "J",
                          "`", "\\",  "|",  "L", "\"",  "7",  "r",  "o" };
@@ -224,15 +236,27 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                         print_color(s, SEQ_SUN_BORDER);
                     else
                     {
-                        for (i = 0; i < 8; i++)
+                        have_track = 0;
+                        for (i = 0; i < 3; i++)
                         {
-                            if (a == s->col_shade[i] || b == s->col_shade[i] ||
-                                c == s->col_shade[i] || d == s->col_shade[i])
+                            if (a == s->col_track[i] || b == s->col_track[i] ||
+                                c == s->col_track[i] || d == s->col_track[i])
                             {
-                                print_color(s, SEQ_SHADE1 + i);
+                                print_color(s, SEQ_TRACK1 + i);
+                                have_track = 1;
                                 break;
                             }
                         }
+                        if (!have_track)
+                            for (i = 0; i < 8; i++)
+                            {
+                                if (a == s->col_shade[i] || b == s->col_shade[i] ||
+                                    c == s->col_shade[i] || d == s->col_shade[i])
+                                {
+                                    print_color(s, SEQ_SHADE1 + i);
+                                    break;
+                                }
+                            }
                     }
                 }
 
@@ -449,6 +473,53 @@ screen_mark_locations(struct screen *s, char *file)
         }
     }
 
+    fclose(fp);
+
+    return 1;
+}
+
+int
+screen_mark_tracks(struct screen *s, char *file)
+{
+    FILE *fp;
+    char *line = NULL;
+    size_t line_n = 0;
+    int isFirst = 1, tracki = 0;
+    double lat, lon, sx1, sy1, sx2, sy2;
+
+    fp = fopen(file, "r");
+    if (fp == NULL)
+    {
+        fprintf(stderr, "Could not open locations file\n");
+        return 0;
+    }
+
+    while (getline(&line, &line_n, fp) != -1)
+    {
+        if (sscanf(line, "%lf %lf\n", &lat, &lon) == 2)
+        {
+            if (isFirst)
+            {
+                (s->project)(s, lon, lat, &sx2, &sy2);
+                isFirst = 0;
+            }
+            else
+            {
+                sx1 = sx2;
+                sy1 = sy2;
+                (s->project)(s, lon, lat, &sx2, &sy2);
+                gdImageLine(s->img, sx1, sy1, sx2, sy2, s->col_track[tracki]);
+            }
+        }
+        else if (strncmp(line, ".", 1) == 0)
+        {
+            isFirst = 1;
+            tracki++;
+            tracki %= 3;
+        }
+    }
+
+    free(line);
     fclose(fp);
 
     return 1;
@@ -698,7 +769,7 @@ main(int argc, char **argv)
     int trailing_newline = 1;
     int opt, c;
     char *map = "ne_110m_land.shp";
-    char *highlight_locations = NULL;
+    char *highlight_locations = NULL, *highlight_tracks = NULL;
     char *outimg = NULL;
     FILE *fd = NULL;
 
@@ -712,7 +783,7 @@ main(int argc, char **argv)
 
     screen_init(&s);
 
-    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bc:od:W:")) != -1)
+    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bc:od:W:t:")) != -1)
     {
         switch (opt)
         {
@@ -727,6 +798,9 @@ main(int argc, char **argv)
                 break;
             case 'l':
                 highlight_locations = optarg;
+                break;
+            case 't':
+                highlight_tracks = optarg;
                 break;
             case 's':
                 s.sun.active = 1;
@@ -781,6 +855,9 @@ main(int argc, char **argv)
     }
     if (s.world_border)
         screen_draw_world_border(&s);
+    if (highlight_tracks != NULL)
+        if (!screen_mark_tracks(&s, highlight_tracks))
+            exit(EXIT_FAILURE);
     if (highlight_locations != NULL)
         if (!screen_mark_locations(&s, highlight_locations))
             exit(EXIT_FAILURE);
