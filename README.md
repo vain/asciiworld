@@ -50,6 +50,8 @@ Command line options
 
 `-o`: Draw land masses as filled polygons. You'll get garbled results when using this together with country borders.
 
+`-d dusk`: Choose definition of "dusk" and thus the twilight span. Accepts "nau" for nautical dusk (12 degree twilight) or "ast" for astronomical dusk (18 degree twilight). By default, civil dusk (6 degree twilight) is used.
+
 More ideas
 ==========
 

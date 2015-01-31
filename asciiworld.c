@@ -60,6 +60,7 @@ struct screen
     int world_border;
     int disable_colors;
     double shade_steps_degree;
+    double dusk_degree;
 
     void (* project)(struct screen *s, double lon, double lat, double *x, double *y);
 
@@ -132,6 +133,7 @@ screen_init(struct screen *s)
     s->world_border = 0;
     s->disable_colors = 0;
     s->shade_steps_degree = 1;
+    s->dusk_degree = 6;
     s->esc_seq = seq_256colors;
 }
 
@@ -586,15 +588,11 @@ screen_shade_map(struct screen *s)
             zeta = acos(sin(phi_sun) * sin(phi) +
                     cos(phi_sun) * cos(phi) * cos(lambda - lambda_sun));
 
-            /* TODO: These values "look good". I don't know if they're
-             * accurate. */
-            /* See how far away from 90 degree we are (10 deg positive
-             * or negative are shaded). Scale the result into the range
-             * of our 8 colors. */
+            /* It's daylight if the sun is above the horizon. If it's
+             * below, we're in some kind of twilight (according to
+             * dusk_degree) or night. */
             d90 = zeta * RAD_2_DEG - 90;
-            d90 /= 10;
-            d90 += 1;
-            d90 *= 0.5;
+            d90 /= s->dusk_degree;
             di90 = 8 - (int)round(d90 * 8);
             di90 = di90 < 0 ? 0 : di90;
             di90 = di90 > 7 ? 7 : di90;
@@ -705,7 +703,7 @@ main(int argc, char **argv)
 
     screen_init(&s);
 
-    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bc:o")) != -1)
+    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bc:od:")) != -1)
     {
         switch (opt)
         {
@@ -745,6 +743,12 @@ main(int argc, char **argv)
                 break;
             case 'o':
                 s.solid_land = 1;
+                break;
+            case 'd':
+                if (strncmp(optarg, "nau", 3) == 0)
+                    s.dusk_degree = 12;
+                else if (strncmp(optarg, "ast", 3) == 0)
+                    s.dusk_degree = 18;
                 break;
             default:
                 exit(EXIT_FAILURE);
