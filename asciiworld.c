@@ -14,32 +14,32 @@
 enum sequence { SEQ_RESET, SEQ_LOCATION, SEQ_SUN, SEQ_SUN_BORDER, SEQ_SHADE1,
                 SEQ_SHADE2, SEQ_SHADE3, SEQ_SHADE4, SEQ_SHADE5, SEQ_SHADE6,
                 SEQ_SHADE7, SEQ_SHADE8, SEQ_LINE };
-char *seq_256colors[] = { "\033[0m",           /* reset */
-                          "\033[38;5;196m",    /* location */
-                          "\033[38;5;220m",    /* sun */
-                          "\033[38;5;220m",    /* sun border */
-                          "\033[38;5;17m",     /* shade1 */
-                          "\033[38;5;19m",     /* shade2 */
-                          "\033[38;5;21m",     /* shade3 */
-                          "\033[38;5;26m",     /* shade4 */
-                          "\033[38;5;30m",     /* shade5 */
-                          "\033[38;5;35m",     /* shade6 */
-                          "\033[38;5;40m",     /* shade7 */
-                          "\033[38;5;46m",     /* shade8 */
-                          "\033[38;5;255m" };  /* line */
-char *seq_8colors[] = { "\033[0m",             /* reset */
-                        "\033[31;1m",          /* location */
-                        "\033[33m",            /* sun */
-                        "\033[36m",            /* sun border */
-                        "\033[34m",            /* shade1 */
-                        "\033[34m",            /* shade2 */
-                        "\033[34;1m",          /* shade3 */
-                        "\033[34;1m",          /* shade4 */
-                        "\033[32m",            /* shade5 */
-                        "\033[32m",            /* shade6 */
-                        "\033[32;1m",          /* shade7 */
-                        "\033[32;1m",          /* shade8 */
-                        "\033[37m" };          /* line */
+char *seq_256colors[] = { "\033[0m\033[48;5;16m",  /* reset */
+                          "\033[38;5;196m",        /* location */
+                          "\033[38;5;220m",        /* sun */
+                          "\033[38;5;220m",        /* sun border */
+                          "\033[38;5;17m",         /* shade1 */
+                          "\033[38;5;19m",         /* shade2 */
+                          "\033[38;5;21m",         /* shade3 */
+                          "\033[38;5;26m",         /* shade4 */
+                          "\033[38;5;30m",         /* shade5 */
+                          "\033[38;5;35m",         /* shade6 */
+                          "\033[38;5;40m",         /* shade7 */
+                          "\033[38;5;46m",         /* shade8 */
+                          "\033[38;5;255m" };      /* line */
+char *seq_8colors[] = { "\033[0m\033[40m",         /* reset */
+                        "\033[31;1m",              /* location */
+                        "\033[33m",                /* sun */
+                        "\033[36m",                /* sun border */
+                        "\033[34m",                /* shade1 */
+                        "\033[34m",                /* shade2 */
+                        "\033[34;1m",              /* shade3 */
+                        "\033[34;1m",              /* shade4 */
+                        "\033[32m",                /* shade5 */
+                        "\033[32m",                /* shade6 */
+                        "\033[32;1m",              /* shade7 */
+                        "\033[32;1m",              /* shade8 */
+                        "\033[37m" };              /* line */
 
 struct screen
 {
@@ -181,6 +181,8 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
     int a, b, c, d;
     char *charset[] = {  " ",  ".",  ",",  "_",  "'",  "|",  "/",  "J",
                          "`", "\\",  "|",  "L", "\"",  "7",  "r",  "o" };
+
+    print_color(s, SEQ_RESET);
 
     for (y = 0; y < s->height - 1; y += 2)
     {
