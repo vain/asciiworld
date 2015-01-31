@@ -4,11 +4,17 @@ observer=$1
 shift
 
 tmpdir=$(mktemp -d)
+satdir=~/.cache/tracksats
 
-mkdir "$tmpdir"/sat
+mkdir -p "$satdir"
+track=()
 for i
 do
-	./getsat "$i" >"$tmpdir"/sat/"$i".tle
+	if [[ ! -f "$satdir"/"$i".tle ]]
+	then
+		./getsat "$i" >"$satdir"/"$i".tle
+	fi
+	track+=("$satdir"/"$i".tle)
 done
 
 tput civis
@@ -16,7 +22,7 @@ trap 'tput cnorm; rm -Rf "$tmpdir"' EXIT
 while true
 do
 	echo -e "points\n$observer" >"$tmpdir"/loc
-	for i in "$tmpdir"/sat/*
+	for i in "${track[@]}"
 	do
 		./calcsat <"$i" >>"$tmpdir"/loc
 	done
