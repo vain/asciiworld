@@ -47,6 +47,40 @@ Dependencies:
 
 *  tput from ncurses
 
+IP connections
+==============
+
+![asciiworld-ip-monitor](/asciiworld-ip-monitor.png?raw=true)
+
+asciiworld-ip-geo
+-----------------
+
+Performs a GeoIP database lookup:
+
+    asciiworld-ip-geo 91.198.174.192
+
+It prints latitude and longitude on STDOU.
+
+Dependencies:
+
+*  [pygeoip](http://pypi.python.org/pypi/pygeoip)
+*  [The GeoIP City Database](http://www.maxmind.com). For Arch Linux, install [geoip-citydata](https://aur.archlinux.org/packages/geoip-citydata) from the AUR.
+
+The script contains the path to the database. Packagers should replace that path during packaging.
+
+Combining the tools with asciiworld: asciiworld-ip-monitor
+----------------------------------------------------------
+
+`$1` is your location:
+
+    asciiworld-ip-monitor '50 8'
+
+Dependencies:
+
+*  GNU awk
+*  ss from iproute2
+*  tput from ncurses
+
 Shortest paths
 ==============
 
