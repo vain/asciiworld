@@ -8,8 +8,13 @@ import sys
 # Path to the database, Arch Linux, package geoip-citydata. Replace this
 # with an appropriate path on your system.
 geoip_city_database = "/usr/share/GeoIP/GeoIPCity.dat"
+geoip_city_database_v6 = "/usr/share/GeoIP/GeoIPCityv6.dat"
 
-gi = GeoIP(geoip_city_database)
-gir = gi.record_by_addr(sys.argv[1])
+addr = sys.argv[1]
+if ":" in addr:
+    gi = GeoIP(geoip_city_database_v6)
+else:
+    gi = GeoIP(geoip_city_database)
+gir = gi.record_by_addr(addr)
 if gir is not None:
     print('{} {}'.format(gir['latitude'], gir['longitude']))
