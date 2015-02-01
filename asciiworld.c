@@ -19,7 +19,7 @@ char *seq_256colors[] = { "\033[0m",               /* reset */
                           "\033[38;5;196m",        /* location */
                           "\033[38;5;220m",        /* sun */
                           "\033[38;5;220m",        /* sun border */
-                          "\033[38;5;17m",         /* shade1 */
+                          "\033[38;5;18m",         /* shade1 */
                           "\033[38;5;19m",         /* shade2 */
                           "\033[38;5;21m",         /* shade3 */
                           "\033[38;5;26m",         /* shade4 */
@@ -194,10 +194,14 @@ print_color(struct screen *s, enum sequence seq)
 void
 screen_show_interpreted(struct screen *s, int trailing_newline)
 {
-    int x, y, i, sun_found, have_track, is_line, glyph;
+    int x, y, i, sun_found, is_sun_border, is_track, is_line, glyph;
     int a, b, c, d;
     char *charset[] = {  " ",  ".",  ",",  "_",  "'",  "|",  "/",  "J",
                          "`", "\\",  "|",  "L", "\"",  "7",  "r",  "o" };
+    char *char_location = "X";
+    char *char_sun = "S";
+    char *char_sun_border = ":";
+    char *char_track = "O";
 
     for (y = 0; y < s->height - 1; y += 2)
     {
@@ -212,20 +216,21 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                 c == s->col_highlight || d == s->col_highlight)
             {
                 print_color(s, SEQ_LOCATION);
-                printf("X");
+                printf("%s", char_location);
                 print_color(s, SEQ_RESET);
             }
             else
             {
                 sun_found = 0;
-                have_track = 0;
+                is_sun_border = 0;
+                is_track = 0;
 
                 for (i = 0; i < 3; i++)
                     if (a == s->col_track[i] || b == s->col_track[i] ||
                         c == s->col_track[i] || d == s->col_track[i])
                     {
                         print_color(s, SEQ_TRACK1 + i);
-                        have_track = 1;
+                        is_track = 1;
                         break;
                     }
 
@@ -236,13 +241,16 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                     {
                         sun_found = 1;
                         print_color(s, SEQ_SUN);
-                        printf("S");
+                        printf("%s", char_sun);
                         print_color(s, SEQ_RESET);
                     }
                     else if (a == s->col_sun_border || b == s->col_sun_border ||
                              c == s->col_sun_border || d == s->col_sun_border)
+                    {
+                        is_sun_border = 1;
                         print_color(s, SEQ_SUN_BORDER);
-                    else if (!have_track)
+                    }
+                    else if (!is_track)
                         for (i = 0; i < 8; i++)
                             if (a == s->col_shade[i] || b == s->col_shade[i] ||
                                 c == s->col_shade[i] || d == s->col_shade[i])
@@ -264,10 +272,17 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                         print_color(s, SEQ_LINE);
                     }
 
-                    glyph = (!!a << 3) | (!!b << 2) | (!!c << 1) | !!d;
-                    printf("%s", charset[glyph]);
+                    if (is_track)
+                        printf("%s", char_track);
+                    else if (is_sun_border)
+                        printf("%s", char_sun_border);
+                    else
+                    {
+                        glyph = (!!a << 3) | (!!b << 2) | (!!c << 1) | !!d;
+                        printf("%s", charset[glyph]);
+                    }
 
-                    if (s->sun.active || is_line || have_track)
+                    if (s->sun.active || is_line || is_track)
                         print_color(s, SEQ_RESET);
                 }
             }
