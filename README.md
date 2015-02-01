@@ -9,8 +9,11 @@ Inspired by:
 
 asciiworld is just the core program that renders the map. You can combine it with other tools, some of which are included in this repository. See README-tools.md.
 
+Building
+========
+
 Dependencies
-============
+------------
 
 If you're using Arch Linux, you're fine with installing these two packages:
 
@@ -26,6 +29,11 @@ If you want to show country borders, you could use this map:
 *  [Natural Earth Data, Countries](http://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-admin-0-countries/)
 
 Since asciiworld can read any "ESRI Shapefile", the other maps available at [Natural Earth Data](http://www.naturalearthdata.com) might be interesting as well. Note that I only test asciiworld with the 1:110m physical map.
+
+Compiling
+---------
+
+Running `make` should be fine in most cases. If you get stuck, just read the Makefile. It's simple.
 
 Command line options
 ====================
@@ -77,12 +85,6 @@ Note that, for the time being, asciiworld draws tracks as points, too. To create
 `-o`: Draw land masses as filled polygons. You'll get garbled results when using this together with country borders.
 
 `-W path`: Instead of creating ASCII output, you can save the resulting image as an "uninterpreted" PNG file. You will want to use `-w` and `-h` together with this option.
-
-More ideas
-==========
-
-*  Zoom/pan
-*  Render arbitrary lines or orbits
 
 CREDITS
 =======

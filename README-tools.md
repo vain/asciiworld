@@ -1,4 +1,4 @@
-Note that all tools rely on all other tools (including asciiworld itelsef) to be available in your `$PATH`.
+Note that all tools might rely on all other tools (including asciiworld itelsef) to be available in your `$PATH`.
 
 Tracking satellites
 ===================
