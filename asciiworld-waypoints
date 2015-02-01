@@ -23,7 +23,7 @@ for i in range(0, len(locs) - 1):
     lat_B, lon_B = locs[i + 1]
     g = Geodesic.WGS84.Inverse(lat_A, lon_A, lat_B, lon_B)
     l = Geodesic.WGS84.Line(g['lat1'], g['lon1'], g['azi1'])
-    n = int(g['a12'] * 90.0 / 100)
+    n = int(g['a12'] * 100.0 / 90)
     for s in range(1, n):
         p = l.Position(float(s) / n * g['s12'])
         print '{} {}'.format(p['lat2'], p['lon2'])
