@@ -46,3 +46,19 @@ Combining the tools with asciiworld: asciiworld-sat-track
 Dependencies:
 
 *  tput from ncurses
+
+Shortest paths
+==============
+
+asciiworld-waypoints
+--------------------
+
+Given a series of locations, this script can calculate tracks between them. For example, this takes you from Mainz over New York City, Hawaii, Tokyo, Bangkok, and Perth to Cape Town:
+
+    asciiworld-waypoints '50 8' '40 -74' '21 -157' '35 139' '13 100' '-31 115' '-33 18'
+
+The script prints the resulting tracks on STDOUT.
+
+Dependencies:
+
+*  [GeographicLib (Python)](http://geographiclib.sourceforge.net/html/other.html#python)
