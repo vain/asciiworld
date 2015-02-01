@@ -47,10 +47,10 @@ Dependencies:
 
 *  tput from ncurses
 
-IP connections
-==============
+TCP/IP connections
+==================
 
-![asciiworld-ip-monitor](/asciiworld-ip-monitor.png?raw=true)
+![asciiworld-tcp-monitor](/asciiworld-tcp-monitor.png?raw=true)
 
 asciiworld-ip-geo
 -----------------
@@ -68,12 +68,12 @@ Dependencies:
 
 The script contains the path to the database. Packagers should replace that path during packaging.
 
-Combining the tools with asciiworld: asciiworld-ip-monitor
-----------------------------------------------------------
+Combining the tools with asciiworld: asciiworld-tcp-monitor
+-----------------------------------------------------------
 
 `$1` is your location:
 
-    asciiworld-ip-monitor '50 8'
+    asciiworld-tcp-monitor '50 8'
 
 Dependencies:
 

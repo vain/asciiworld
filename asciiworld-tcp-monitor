@@ -9,8 +9,8 @@ trap 'rm -f "$track"; tput cnorm' EXIT
 while true
 do
 	: >"$track"
-	ss -4tun |
-	gawk 'NR != 1 { split($6, s, ":"); print s[1] }' |
+	ss -4tn |
+	gawk 'NR != 1 { split($5, s, ":"); print s[1] }' |
 	sort |
 	uniq |
 	while read ip
