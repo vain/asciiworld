@@ -732,7 +732,7 @@ main(int argc, char **argv)
     struct winsize w;
     int trailing_newline = 1;
     int opt, c;
-    char *map = "ne_110m_land.shp";
+    char *map = DEFAULT_MAP;
     char *highlight_locations = NULL;
     char *outimg = NULL;
     FILE *fp = NULL;

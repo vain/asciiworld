@@ -12,7 +12,7 @@ for i
 do
 	if [[ ! -f "$satdir"/"$i".tle ]]
 	then
-		tle=$(./getsat "$i")
+		tle=$(asciiworld-sat-get "$i")
 		(( $? != 0 )) && exit 1
 		echo "$tle" >"$satdir"/"$i".tle
 	fi
@@ -26,10 +26,10 @@ do
 	echo -e "points\n$observer" >"$tmpdir"/loc
 	for i in "${track[@]}"
 	do
-		./calcsat <"$i" >>"$tmpdir"/loc
+		asciiworld-sat-calc <"$i" >>"$tmpdir"/loc
 		(( $? != 0 )) && exit 1
 	done
-	./asciiworld -Tosl "$tmpdir"/loc -d ast
+	asciiworld -Tosl "$tmpdir"/loc -d ast
 	(( $? != 0 )) && exit 1
 	sleep 0.5
 	tput home
