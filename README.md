@@ -12,19 +12,20 @@ asciiworld is just the core program that renders the map. You can combine it wit
 Dependencies
 ============
 
-You need a map. I suggest you use one of those:
+If you're using Arch Linux, you're fine with installing these two packages:
+
+*  Drawing algorithms: [gd](https://www.archlinux.org/packages/extra/x86_64/gd/)
+*  Reading maps: [shapelib](https://www.archlinux.org/packages/community/x86_64/shapelib/)
+
+asciiworld comes with a bundled map:
 
 *  [Natural Earth Data, Land](http://www.naturalearthdata.com/downloads/110m-physical-vectors/110m-land/)
+
+If you want to show country borders, you could use this map:
+
 *  [Natural Earth Data, Countries](http://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-admin-0-countries/)
 
-Since NED distributes their data as "ESRI Shapefiles", you also need [shapelib](http://shapelib.maptools.org/).
-
-For rendering filled polygons, [libgd](http://www.libgd.org/) is used.
-
-Long story short: If you're using Arch Linux, you're fine with installing these two packages:
-
-*  [gd](https://www.archlinux.org/packages/extra/x86_64/gd/)
-*  [shapelib](https://www.archlinux.org/packages/community/x86_64/shapelib/)
+Since asciiworld can read any "ESRI Shapefile", the other maps available at [Natural Earth Data](http://www.naturalearthdata.com) might be interesting as well. Note that I only test asciiworld with the 1:110m physical map.
 
 Command line options
 ====================
