@@ -59,7 +59,7 @@ Performs a GeoIP database lookup:
 
     asciiworld-ip-geo 91.198.174.192
 
-It prints latitude and longitude on STDOU.
+It prints latitude and longitude on STDOUT.
 
 Dependencies:
 
