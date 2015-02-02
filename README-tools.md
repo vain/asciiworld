@@ -33,7 +33,7 @@ It creates a point and two tracks for asciiworld: The current position of the sa
 
 Dependencies:
 
-*  Python 3
+*  Python 2 or 3
 *  [pyephem](http://rhodesmill.org/pyephem/)
 
 Combining the tools with asciiworld: asciiworld-sat-track
