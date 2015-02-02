@@ -1,6 +1,30 @@
 #!/bin/bash
 
+get_observer_hostname() {
+    internalip=$(hostname --ip-addresses|head -n1)
+    asciiworld-ip-geo "$internalip" 2>/dev/null
+}
+
+get_observer_upnp() {
+    if ! command -v upnpc &>/dev/null; then
+        return
+    fi
+    externalip=$(upnpc -s | awk '{ FS = "= " } /ExternalIPAddress/ { print $2 }')
+    asciiworld-ip-geo "$externalip" 2>/dev/null
+}
+
 observer=$1
+if [[ -z $observer ]]; then
+    observer=$(get_observer_hostname)
+fi
+if [[ -z $observer ]]; then
+    observer=$(get_observer_upnp)
+fi
+if [[ -z $observer ]]; then
+    echo "Could not auto-detect local coordinates and no coordinates supplied."
+    echo "Try $0 \"\$LAT \$LONG\""
+    exit 1
+fi
 
 track=$(mktemp)
 tput civis
