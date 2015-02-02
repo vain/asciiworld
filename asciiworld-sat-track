@@ -7,6 +7,7 @@ tmpdir=$(mktemp -d)
 satdir=~/.cache/asciiworld-sat-track
 
 mkdir -p "$satdir"
+find "$satdir" -type f -mtime +0 -delete
 track=()
 for i
 do
