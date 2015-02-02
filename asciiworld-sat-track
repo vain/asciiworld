@@ -4,7 +4,7 @@ observer=$1
 shift
 
 tmpdir=$(mktemp -d)
-satdir=~/.cache/tracksats
+satdir=~/.cache/asciiworld-sat-track
 
 mkdir -p "$satdir"
 track=()
