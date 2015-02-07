@@ -2,6 +2,7 @@
 
 
 from pygeoip import GeoIP
+import http.client
 import sys
 
 
@@ -10,7 +11,23 @@ import sys
 geoip_city_database = "/usr/share/GeoIP/GeoIPCity.dat"
 geoip_city_database_v6 = "/usr/share/GeoIP/GeoIPCityv6.dat"
 
-addr = sys.argv[1]
+addr = None
+if len(sys.argv) > 1:
+    addr = sys.argv[1]
+else:
+    try:
+        c = http.client.HTTPConnection('ifconfig.co')
+        c.request('GET', '/', headers={'User-Agent': 'curl/7.40.0'})
+        r = c.getresponse()
+        if r.status == 200:
+            addr = r.read().decode('ascii').strip()
+    except:
+        pass
+
+if addr is None:
+    print('No IP address given and auto-discovery failed.', file=sys.stderr)
+    sys.exit(1)
+
 if ":" in addr:
     gi = GeoIP(geoip_city_database_v6)
 else:

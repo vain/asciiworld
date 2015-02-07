@@ -1,7 +1,19 @@
 #!/bin/bash
 
-observer=$1
-shift
+observer=
+
+while getopts o: name
+do
+	case $name in
+		o)
+			observer=$OPTARG
+			;;
+	esac
+done
+shift $((OPTIND - 1))
+
+[[ -z "$observer" ]] && observer=$(asciiworld-ip-geo)
+[[ -z "$observer" ]] && exit 1
 
 tmpdir=$(mktemp -d)
 satdir=~/.cache/asciiworld-sat-track

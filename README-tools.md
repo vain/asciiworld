@@ -39,9 +39,11 @@ Dependencies:
 Combining the tools with asciiworld: asciiworld-sat-track
 ---------------------------------------------------------
 
-`$1` is your location, followed by all satellites you want to track:
+`-o` specifies the location of you, the observer, followed by all satellites you want to track:
 
-    asciiworld-sat-track '50 8' 25544 25078
+    asciiworld-sat-track -o '50 8' 25544 25078
+
+Note that `-o` is optional. If it's not given, the script will try to auto-detect your public IP using asciiworld-ip-geo.
 
 Dependencies:
 
@@ -59,7 +61,7 @@ Performs a GeoIP database lookup:
 
     asciiworld-ip-geo 91.198.174.192
 
-It prints latitude and longitude on STDOUT.
+It prints latitude and longitude on STDOUT. If you omit the argument, the script tries to auto-detect your public IP by querying `ifconfig.co`.
 
 Dependencies:
 
@@ -71,9 +73,11 @@ The script contains the path to the database. Packagers should replace that path
 Combining the tools with asciiworld: asciiworld-tcp-monitor
 -----------------------------------------------------------
 
-`$1` is your location:
+`-o` specifies the location of you, the observer:
 
-    asciiworld-tcp-monitor '50 8'
+    asciiworld-tcp-monitor -o '50 8'
+
+Note that `-o` is optional. If it's not given, the script will try to auto-detect your public IP using asciiworld-ip-geo.
 
 Dependencies:
 
