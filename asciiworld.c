@@ -848,7 +848,6 @@ main(int argc, char **argv)
             gdImagePng(s.img, fp);
             fclose(fp);
         }
-
     }
 
     exit(EXIT_SUCCESS);
