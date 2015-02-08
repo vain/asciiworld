@@ -45,6 +45,8 @@ Combining the tools with asciiworld: asciiworld-sat-track
 
 Note that `-o` is optional. If it's not given, the script will try to auto-detect your public IP using asciiworld-ip-geo.
 
+You can also specify `-d 5` to quit after 5 seconds.
+
 Dependencies:
 
 *  tput from ncurses
@@ -78,6 +80,8 @@ Combining the tools with asciiworld: asciiworld-tcp-monitor
     asciiworld-tcp-monitor -o '50 8'
 
 Note that `-o` is optional. If it's not given, the script will try to auto-detect your public IP using asciiworld-ip-geo.
+
+You can also specify `-d 5` to quit after 5 seconds.
 
 Dependencies:
 

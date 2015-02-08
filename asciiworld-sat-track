@@ -1,12 +1,16 @@
 #!/bin/bash
 
 observer=
+duration=0
 
-while getopts o: name
+while getopts o:d: name
 do
 	case $name in
 		o)
 			observer=$OPTARG
+			;;
+		d)
+			duration=$OPTARG
 			;;
 	esac
 done
@@ -32,9 +36,10 @@ do
 	track+=("$satdir"/"$i".tle)
 done
 
+target_time=$(( $(date +%s) + duration ))
 tput civis
 trap 'tput cnorm; rm -Rf "$tmpdir"' EXIT
-while true
+while (( duration <= 0 )) || (( $(date +%s) < target_time ))
 do
 	echo -e "points\n$observer" >"$tmpdir"/loc
 	for i in "${track[@]}"

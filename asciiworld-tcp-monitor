@@ -1,12 +1,16 @@
 #!/bin/bash
 
 observer=
+duration=0
 
-while getopts o: name
+while getopts o:d: name
 do
 	case $name in
 		o)
 			observer=$OPTARG
+			;;
+		d)
+			duration=$OPTARG
 			;;
 	esac
 done
@@ -19,7 +23,8 @@ track=$(mktemp)
 tput civis
 trap 'rm -f "$track"; tput cnorm' EXIT
 
-while true
+target_time=$(( $(date +%s) + duration ))
+while (( duration <= 0 )) || (( $(date +%s) < target_time ))
 do
 	: >"$track"
 	ss -tn |
