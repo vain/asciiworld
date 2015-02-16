@@ -20,7 +20,7 @@ shift $((OPTIND - 1))
 [[ -z "$observer" ]] && exit 1
 
 tmpdir=$(mktemp -d)
-satdir=~/.cache/asciiworld-sat-track
+satdir="${XDG_CACHE_HOME:-$HOME/.cache}"/asciiworld-sat-track
 
 mkdir -p "$satdir"
 find "$satdir" -type f -mtime +0 -delete
