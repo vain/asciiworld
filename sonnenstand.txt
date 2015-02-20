@@ -62,7 +62,7 @@ T ist wieder der Tag des Jahres. Im Laufe eines Tages ist die Schwankung
 so gering, dass das wie bei der Zeitgleichung ausreicht.
 
 Das ist auch gleichzeitig die geographische Breite, bei der die Sonne am
-"heutigen" Mittag im Zenith stehen wird.
+"heutigen" Mittag im Zenit stehen wird.
 
 
 
@@ -73,60 +73,13 @@ Bei der ganzen Aktion wird angenommen, dass die Sonne paralleles Licht
 auf eine kugelförmige Erde wirft. Das heißt, dass genau eine Kugelhälfte
 beleuchtet ist.
 
-Geht man (im Winter) von dem Punkt, an dem die Sonne gerade im Zenith
-steht, 90° nach Norden, so erreicht man einen Punkt auf dem Großkreis,
-der die beleuchtete und unbeleuchtete Hälfte der Erde trennt. Es ist
-außerdem der nordpolnächste Punkt auf diesem Großkreis. Mit diesem Punkt
-als Grundlage ist der Großkreis parametrisierbar (siehe Bronstein, 6.
-Auflage, 3.204, Seite 179) und zwar praktischerweise in
-Kugelkoordinaten.
+Seit das Zeichnen von Klein- und Großkreisen im asciiworld-Kern
+angekommen ist, wird die Licht-Schatten-Grenze darüber realisiert.
+Gezeichnet wird ein Kreis, dessen Mittelpunkt der Ort auf der Erde ist,
+an dem die Sonne momentan im Zenit steht. Der Radius dieses Kreises ist
+90°, was ihn zu einem Großkreis macht.
 
-(Eine theoretische Alternative wäre gewesen, diesen Großkreis in
-kartesischen Koordinaten zu berechnen. In der Praxis ist das durch die
-Umrechnungen von Kugelkoordinaten zu kartesischen Koordinaten und zurück
-sehr umständlich.)
-
-Durch die Periodizität der verwendeten Funktionen funktioniert das Ganze
-zu anderen Jahreszeiten genauso (obwohl dann phi_n > 90°, was als
-Kugelkoordinate eigentlich keinen Sinn ergibt).
-
-Die Gleichung der Kurve ist:
-
-	tan(phi_n) * cos(lambda - lambda_n) = tan(phi)
-
-Dabei ist (lambda_n, phi_n) der nordpolnächste Punkt und (lambda, phi)
-ein Punkt auf dem Großkreis. Die Gleichung kann man nun nach phi oder
-lambda auflösen und jeweils über die andere Variable iterieren.
-
-Die meiste Zeit des Jahres über ergibt die Iteration über lambda eine
-schöne Kurve. Um den 20. März und 20. September herum jedoch fällt der
-nordpolnächste Punkt mit dem Nordpol zusammen und man erhält einen
-Großkreis durch den Nordpol -- die eine Hälfte dieses Kreises hat an
-allen Punkten lambda = -180° und die andere Hälfte hat lambda = +180°.
-Bei einer Iteration über lambda bekommt man in diesen Fällen also ein
-sehr instabiles Ergebnis.
-
-Ein Workaround ist, zu diesen Zeitpunkten nach lambda aufzulösen und
-über phi zu iterieren. Nachteilig daran sind folgende Punkte:
-
-	- Erstens, dass man phi nicht einfach von phi_n bis -phi_n iterieren
-	  lassen kann, denn gerade in den Bereichen nahe phi_n und -phi_n
-	  bewegt man sich immer sehr nahe an NaN-Werten (passiert, wenn man
-	  phi_n über- oder -phi_n unterschreitet). Falls das vorkommt, dann
-	  fehlen Liniensegmente.
-
-	- Außerdem kann man phi nicht linear zwischen phi_n und -phi_n
-	  laufen lassen, sondern sollte mehr Punkte nahe phi_n und -phi_n
-	  generieren (das wird im Code durch die atan-Transformation von
-	  iscaled durchgeführt).
-
-	- Schließlich kann es passieren, dass das errechnete lambda den
-	  Wertebereich zwischen -180 und 180 verlässt. (Das ist bei der
-	  Iteration über lambda nicht möglich, da der Arkustangens immer
-	  saubere Werte auf einer "Seite" liefert.)
-
-Die meiste Zeit des Jahres wird also nach phi aufgelöst und über lambda
-iteriert und nur zu kritischen Zeitpunkten umgekehrt. Die fehlenden
-Liniensegmente sind übrigens gut verschmerzbar, da sie an den Polen
-fehlen, also in Bereichen, die man bei den üblichen Projektionen ohnehin
-nicht sieht.
+Dieser Ansatz hat gegenüber der vorherigen Herangehensweise
+(Großkreisgleichung nach phi und lambda auflösen) hauptsächlich den
+Vorteil, dass der Code wiederverwendbar ist. Kreise zeichnen zu können,
+ist allgemein nützlich, zum Beispiel für den Footprint von Satelliten.
