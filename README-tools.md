@@ -29,7 +29,9 @@ This scripts reads TLE data from STDIN.
 
     asciiworld-sat-get 25544 | asciiworld-sat-calc
 
-It creates a point and two tracks for asciiworld: The current position of the satellite itself, the next full orbit and 5% of the previous orbit.
+It creates a point and three tracks for asciiworld: The current position of the satellite itself, the next full orbit, 5% of the previous orbit and a track which marks the satellite's footprint (i.e., "visibility radius").
+
+You can also specify `-F` to omit the footprint track.
 
 Dependencies:
 
@@ -46,6 +48,8 @@ Combining the tools with asciiworld: asciiworld-sat-track
 Note that `-o` is optional. If it's not given, the script will try to auto-detect your public IP using asciiworld-ip-geo.
 
 You can also specify `-d 5` to quit after 5 seconds.
+
+You can also specify `-F` to omit the footprint track.
 
 Dependencies:
 
