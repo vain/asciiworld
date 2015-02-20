@@ -62,7 +62,7 @@ T ist wieder der Tag des Jahres. Im Laufe eines Tages ist die Schwankung
 so gering, dass das wie bei der Zeitgleichung ausreicht.
 
 Das ist auch gleichzeitig die geographische Breite, bei der die Sonne am
-"heutigen" Mittag im Zenith stehen wird.
+"heutigen" Mittag im Zenit stehen wird.
 
 
 
@@ -76,7 +76,7 @@ beleuchtet ist.
 Seit das Zeichnen von Klein- und Großkreisen im asciiworld-Kern
 angekommen ist, wird die Licht-Schatten-Grenze darüber realisiert.
 Gezeichnet wird ein Kreis, dessen Mittelpunkt der Ort auf der Erde ist,
-an dem die Sonne momentan im Zenith steht. Der Radius dieses Kreises ist
+an dem die Sonne momentan im Zenit steht. Der Radius dieses Kreises ist
 90°, was ihn zu einem Großkreis macht.
 
 Dieser Ansatz hat gegenüber der vorherigen Herangehensweise
