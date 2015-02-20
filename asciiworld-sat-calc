@@ -22,6 +22,7 @@ lat = sat.sublat
 ele = sat.elevation
 print('points')
 print('{:f} {:f}'.format(degrees(lat), degrees(lon)))
+print('.')
 
 print('track')
 orbital_period = 60 * 60 * 24 / sat._n
@@ -31,6 +32,7 @@ while orbit_offset < orbital_period:
     sat.compute(datetime.datetime.utcnow() +
             datetime.timedelta(seconds=orbit_offset))
     print('{:f} {:f}'.format(degrees(sat.sublat), degrees(sat.sublong)))
+print('.')
 
 print('track')
 orbit_offset = 0
@@ -39,11 +41,12 @@ while orbit_offset > -0.05 * orbital_period:
     sat.compute(datetime.datetime.utcnow() +
             datetime.timedelta(seconds=orbit_offset))
     print('{:f} {:f}'.format(degrees(sat.sublat), degrees(sat.sublong)))
+print('.')
 
 if not (len(sys.argv) > 1 and sys.argv[1] == '-F'):
     # The satellite's footprint is a small circle centered at (lat, lon)
     # with radius r (spherical distance).
-    print('circle')
+    print('circles')
     r_earth = 6371000
     try:
         r = acos(r_earth / (r_earth + ele))
@@ -52,3 +55,4 @@ if not (len(sys.argv) > 1 and sys.argv[1] == '-F'):
         print('Something is wrong with the elevation of the satellite: {}'.format(ele),
               file=sys.stderr
         )
+    print('.')

@@ -42,28 +42,33 @@ Command line options
 
 `-m path`: Path to an ESRI Shapefile (.shx or .shp).
 
-`-l path`: Path to a file containing locations and tracks to highlight. Points are preceeded by a line containing "points", tracks are preceeded by "track". Points are marked with an "X". Tracks are rendered using the common charset but all points on a track have the same distinct color. For example, the following file would highlight Mainz and Cape Town and render two arbitrary tracks:
+`-l path`: Path to a file containing locations, tracks and sphere circles to highlight. The file format looks like this:
 
     points
     50 8
     -33.9 18.4
+    .
+    
     track
-    50 8
-    40 20
-    30 40
-    20 70
-    10 90
-    1 104
-    track
-    -33.9 18.4
-    -40 30
-    -50 50
-    -60 80
-    -50 110
-    -40 130
-    -33.9 151.1
+    0 0
+    2 -1
+    4 -2
+    6 -3
+    8 -4
+    .
+    
+    circles
+    50 8 10
+    -23 -20 90
+    .
 
-Note that, for the time being, asciiworld draws tracks as points, too. To create the illusion of a connected line, you should simply provide enough points. :-)
+All values are degrees. Empty and non-matching lines are ignored.
+
+Points: Latitude, longitude. They are simply marked with an "X".
+
+Tracks: Latitude, longitude. Tracks are rendered with a special charset, all points on a track have the same color. Note that, for the time being, asciiworld draws tracks as points, too. To create the illusion of a connected line, you should simply provide enough points. :-)
+
+Circles: Latitude, longitude, radius. You can draw great circles (orthodromes) and small circles.
 
 `-s`: Turn on "day-and-night" mode. Areas that are currently lit by the sun will be shown as green, whereas the other parts are shown as dark dark blue. Areas currently in the "twilight zone" will be shaded accordingly (see `-d`). The "position" of the sun itself will be marked with an "S". A yellow line marks the current sunset/sunrise locations.
 

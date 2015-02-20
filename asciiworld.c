@@ -540,7 +540,7 @@ screen_mark_locations(struct screen *s, char *file)
     FILE *fp;
     char *line = NULL;
     size_t line_n = 0;
-    int mode, active, tracki = -1;
+    int tracki = -1;
     double lat, lon, r, x, y;
 
     fp = fopen(file, "r");
@@ -550,51 +550,63 @@ screen_mark_locations(struct screen *s, char *file)
         return 0;
     }
 
-    for (mode = 0; mode < 2; mode++)
+    /* Read block headers, tracks or circles. */
+    while (getline(&line, &line_n, fp) != -1)
     {
-        fseek(fp, 0, SEEK_SET);
-        active = 0;
-        while (getline(&line, &line_n, fp) != -1)
+        if (strncmp(line, "track\n", strlen("track\n")) == 0)
         {
-            if (strncmp(line, "track", strlen("track")) == 0)
+            /* All points on a track have the same color. */
+            tracki++;
+            tracki %= 3;
+            s->brush = s->col_track[tracki];
+
+            /* Read points until EOF or block delimiter. */
+            while (getline(&line, &line_n, fp) != -1 &&
+                   strncmp(line, ".\n", strlen(".\n")) != 0)
             {
-                active = mode == 0 ? 1 : 0;
-                if (active)
+                if (sscanf(line, "%lf %lf\n", &lat, &lon) == 2)
                 {
+                    (s->project)(s, lon, lat, &x, &y);
+                    gdImageSetPixel(s->img, x, y, s->brush);
+                }
+            }
+        }
+        else if (strncmp(line, "circles\n", strlen("circles\n")) == 0)
+        {
+            /* Read circles until EOF or block delimiter. */
+            while (getline(&line, &line_n, fp) != -1 &&
+                   strncmp(line, ".\n", strlen(".\n")) != 0)
+            {
+                if (sscanf(line, "%lf %lf %lf\n", &lat, &lon, &r) == 3)
+                {
+                    /* Each circle has a new color. */
                     tracki++;
                     tracki %= 3;
                     s->brush = s->col_track[tracki];
+
+                    screen_draw_spherical_circle(s, lon, lat, r);
                 }
-            }
-            else if (strncmp(line, "points", strlen("points")) == 0)
-            {
-                active = mode == 1 ? 1 : 0;
-                if (active)
-                    s->brush = s->col_highlight;
-            }
-            else if (sscanf(line, "%lf %lf\n", &lat, &lon) == 2 && active)
-            {
-                (s->project)(s, lon, lat, &x, &y);
-                gdImageSetPixel(s->img, x, y, s->brush);
             }
         }
     }
 
+    /* Read again from start, but only points this time. */
+    s->brush = s->col_highlight;
     fseek(fp, 0, SEEK_SET);
-    active = 0;
     while (getline(&line, &line_n, fp) != -1)
     {
-        if (strncmp(line, "circle", strlen("circle")) == 0)
+        if (strncmp(line, "points", strlen("points")) == 0)
         {
-            active = 1;
-            tracki++;
-            tracki %= 3;
-            s->brush = s->col_track[tracki];
-        }
-        else if (sscanf(line, "%lf %lf %lf\n", &lat, &lon, &r) == 3 && active)
-        {
-            screen_draw_spherical_circle(s, lon, lat, r);
-            active = 0;
+            /* Read points until EOF or block delimiter. */
+            while (getline(&line, &line_n, fp) != -1 &&
+                   strncmp(line, ".\n", strlen(".\n")) != 0)
+            {
+                if (sscanf(line, "%lf %lf\n", &lat, &lon) == 2)
+                {
+                    (s->project)(s, lon, lat, &x, &y);
+                    gdImageSetPixel(s->img, x, y, s->brush);
+                }
+            }
         }
     }
 

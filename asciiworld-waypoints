@@ -16,6 +16,7 @@ locs = [(float(a), float(b)) for (a, b) in locs]
 print 'points'
 for lat, lon in locs:
     print '{} {}'.format(lat, lon)
+print '.'
 
 for i in range(0, len(locs) - 1):
     print 'track'
@@ -27,3 +28,4 @@ for i in range(0, len(locs) - 1):
     for s in range(1, n):
         p = l.Position(float(s) / n * g['s12'])
         print '{} {}'.format(p['lat2'], p['lon2'])
+    print '.'
