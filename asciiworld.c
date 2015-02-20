@@ -307,6 +307,88 @@ screen_draw_line_projected(struct screen *s, double lon1, double lat1,
     gdImageLine(s->img, x1, y1, x2, y2, s->brush);
 }
 
+void
+screen_draw_spherical_circle(struct screen *s, double lon_deg,
+                             double lat_deg, double r_deg)
+{
+    int i, steps = 1024;
+    double slat_deg;
+    double s_theta, s_phi;
+    double rx, ry, rz;
+    double px, py, pz;
+    double p2x, p2y, p2z, p2z_fixed;
+    double alpha, m[9];
+    double x, y;
+
+    /* Get latitude of one point on the small circle. We can easily do
+     * this by adjusting the latitude but we have to avoid pushing over
+     * a pole. */
+    if (lat_deg > 0)
+        slat_deg = lat_deg - r_deg;
+    else
+        slat_deg = lat_deg + r_deg;
+
+    /* Geographic coordinates to spherical coordinates. */
+    s_theta = -(lat_deg * DEG_2_RAD) + (90 * DEG_2_RAD);
+    s_phi = lon_deg * DEG_2_RAD;
+
+    /* Cartesian coordinates of rotation axis. */
+    rx = sin(s_theta) * cos(s_phi);
+    ry = sin(s_theta) * sin(s_phi);
+    rz = cos(s_theta);
+
+    /* Rotation matrix around r{x,y,z} by alpha. */
+    alpha = (360.0 / steps) * DEG_2_RAD;
+
+    m[0] = rx * rx * (1 - cos(alpha)) + cos(alpha);
+    m[1] = ry * rx * (1 - cos(alpha)) + rz * sin(alpha);
+    m[2] = rz * rx * (1 - cos(alpha)) - ry * sin(alpha);
+
+    m[3] = rx * ry * (1 - cos(alpha)) - rz * sin(alpha);
+    m[4] = ry * ry * (1 - cos(alpha)) + cos(alpha);
+    m[5] = rz * ry * (1 - cos(alpha)) + rx * sin(alpha);
+
+    m[6] = rx * rz * (1 - cos(alpha)) + ry * sin(alpha);
+    m[7] = ry * rz * (1 - cos(alpha)) - rx * sin(alpha);
+    m[8] = rz * rz * (1 - cos(alpha)) + cos(alpha);
+
+    /* Cartesian coordinates of initial vector. */
+    s_theta = -(slat_deg * DEG_2_RAD) + (90 * DEG_2_RAD);
+    s_phi = lon_deg * DEG_2_RAD;
+    px = sin(s_theta) * cos(s_phi);
+    py = sin(s_theta) * sin(s_phi);
+    pz = cos(s_theta);
+
+    for (i = 0; i < steps; i++)
+    {
+        /* Rotate p{x,y,z}. */
+        p2x = px * m[0] + py * m[3] + pz * m[6];
+        p2y = px * m[1] + py * m[4] + pz * m[7];
+        p2z = px * m[2] + py * m[5] + pz * m[8];
+
+        /* For acos(), force p2z back into [-1, 1] which *might* happen
+         * due to precision errors. */
+        p2z_fixed = fmax(-1, fmin(1, p2z));
+
+        /* Convert back to spherical coordinates and then geographic
+         * coordinates. */
+        s_theta = acos(p2z_fixed);
+        s_phi = atan2(p2y, p2x);
+
+        lat_deg = ((90 * DEG_2_RAD) - s_theta) * RAD_2_DEG;
+        lon_deg = s_phi * RAD_2_DEG;
+
+        /* Project and draw pixel. */
+        (s->project)(s, lon_deg, lat_deg, &x, &y);
+        gdImageSetPixel(s->img, x, y, s->brush);
+
+        /* Use rotated p{x,y,z} as basis for next rotation. */
+        px = p2x;
+        py = p2y;
+        pz = p2z;
+    }
+}
+
 int
 poly_orientation(double *v)
 {
@@ -516,96 +598,10 @@ screen_mark_sun(struct screen *s)
 void
 screen_mark_sun_border(struct screen *s)
 {
-    double phi_n, lambda_n;
-    double phi1, lambda1, phi2, lambda2, iscaled;
-    double iscaled_smooth = 20;
-    int i, steps = 128, modif;
-
-    s->brush = s->col_sun_border;
-
     /* Again, see german notes in "sonnenstand.txt". */
 
-    phi_n = (s->sun.lat + 90) * DEG_2_RAD;
-    lambda_n = s->sun.lon * DEG_2_RAD;
-
-    /* Around March 20 and September 20, use the alternative
-     * parametrisation where we iterate over phi instead of lambda. */
-    if (s->sun.lat + 90 > 86 && s->sun.lat + 90 < 94)
-        for (modif = -1; modif <= 1; modif += 2)
-            for (i = 0; i < steps; i++)
-            {
-                /* Do not run iscaled from [0:1] linearly but create more
-                 * points close to 0 and close 1. Just plot this in gnuplot
-                 * to see what's going on here:
-                 *
-                 *   plot [0:1] 0.5 * (atan(32 * x - 16) / atan(16) + 1)
-                 */
-                iscaled = (double)i / steps;
-                iscaled = 0.5 * (atan(iscaled_smooth * iscaled - 0.5 * iscaled_smooth)
-                          / atan(0.5 * iscaled_smooth) + 1);
-                /* Run phi from phi_n to -phi_n (or the other way round). */
-                phi1 = iscaled * 2 * phi_n - phi_n;
-                /* Here, modif takes care of running in positive or negative
-                 * direction. Depending on that, we might have to flip
-                 * lambda. */
-                lambda1 = acos(tan(modif * phi1) / tan(phi_n)) + lambda_n;
-                lambda1 = modif == 1 ? lambda1 : lambda1 - M_PI;
-
-                /* Okay, now do that same thing but based on "i + 1" instead
-                 * of just "i". */
-                iscaled = (double)(i + 1) / steps;
-                iscaled = 0.5 * (atan(iscaled_smooth * iscaled - 0.5 * iscaled_smooth)
-                          / atan(0.5 * iscaled_smooth) + 1);
-                phi2 = iscaled * 2 * phi_n - phi_n;
-                lambda2 = acos(tan(modif * phi2) / tan(phi_n)) + lambda_n;
-                lambda2 = modif == 1 ? lambda2 : lambda2 - M_PI;
-
-                /* Around the top/bottom, we might get NaNs. Skip those. */
-                if (isnan(lambda1) || isnan(lambda2))
-                    continue;
-
-                /* If they're both over the edge, then push them both. */
-                if (lambda1 < -M_PI && lambda2 < -M_PI)
-                {
-                    lambda1 += 2 * M_PI;
-                    lambda2 += 2 * M_PI;
-                }
-                else if (lambda1 > M_PI && lambda2 > M_PI)
-                {
-                    lambda1 -= 2 * M_PI;
-                    lambda2 -= 2 * M_PI;
-                }
-                /* If only one of them is over the edge, then skip this
-                 * line. The results in missing segments around the
-                 * poles. This is okay, though, because we're missing
-                 * segments in those areas anyway. */
-                else if (!(lambda1 >= -M_PI && lambda1 <= M_PI &&
-                           lambda2 >= -M_PI && lambda2 <= M_PI))
-                    continue;
-
-                screen_draw_line_projected(s,
-                                           lambda1 * RAD_2_DEG,
-                                           phi1 * RAD_2_DEG,
-                                           lambda2 * RAD_2_DEG,
-                                           phi2 * RAD_2_DEG);
-            }
-    /* But by default, we iterate over lambda which is much simpler and
-     * more stable (except for those cases above). */
-    else
-        for (i = 0; i < steps; i++)
-        {
-            lambda1 = (double)i / steps * 2 * M_PI - M_PI;
-            phi1 = atan(tan(phi_n) * cos(lambda1 - lambda_n));
-
-            lambda2 = (double)(i + 1) / steps * 2 * M_PI - M_PI;
-            phi2 = atan(tan(phi_n) * cos(lambda2 - lambda_n));
-
-            screen_draw_line_projected(s,
-                                       lambda1 * RAD_2_DEG,
-                                       phi1 * RAD_2_DEG,
-                                       lambda2 * RAD_2_DEG,
-                                       phi2 * RAD_2_DEG);
-        }
+    s->brush = s->col_sun_border;
+    screen_draw_spherical_circle(s, s->sun.lon, s->sun.lat, 90);
 }
 
 void
