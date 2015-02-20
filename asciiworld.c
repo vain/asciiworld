@@ -541,7 +541,7 @@ screen_mark_locations(struct screen *s, char *file)
     char *line = NULL;
     size_t line_n = 0;
     int mode, active, tracki = -1;
-    double lat, lon, x, y;
+    double lat, lon, r, x, y;
 
     fp = fopen(file, "r");
     if (fp == NULL)
@@ -577,6 +577,24 @@ screen_mark_locations(struct screen *s, char *file)
                 (s->project)(s, lon, lat, &x, &y);
                 gdImageSetPixel(s->img, x, y, s->brush);
             }
+        }
+    }
+
+    fseek(fp, 0, SEEK_SET);
+    active = 0;
+    while (getline(&line, &line_n, fp) != -1)
+    {
+        if (strncmp(line, "circle", strlen("circle")) == 0)
+        {
+            active = 1;
+            tracki++;
+            tracki %= 3;
+            s->brush = s->col_track[tracki];
+        }
+        else if (sscanf(line, "%lf %lf %lf\n", &lat, &lon, &r) == 3 && active)
+        {
+            screen_draw_spherical_circle(s, lon, lat, r);
+            active = 0;
         }
     }
 
