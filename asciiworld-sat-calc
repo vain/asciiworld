@@ -59,9 +59,13 @@ def cartesian_rotation(lat, lon, r, steps):
         p2y = px * M[1] + py * M[4] + pz * M[7]
         p2z = px * M[2] + py * M[5] + pz * M[8]
 
+        # For acos(), force p2z back into [-1, 1] which *might* happen
+        # due to precision errors.
+        p2z_fixed = max(-1, min(1, p2z))
+
         # Convert back to spherical coordinates and then geographic
         # coordinates.
-        s_theta = acos(p2z)
+        s_theta = acos(p2z_fixed)
         s_phi = atan2(p2y, p2x)
 
         lat = degrees(radians(90) - s_theta)
