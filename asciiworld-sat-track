@@ -2,8 +2,9 @@
 
 observer=
 duration=0
+footprint=
 
-while getopts o:d: name
+while getopts o:d:F name
 do
 	case $name in
 		o)
@@ -11,6 +12,9 @@ do
 			;;
 		d)
 			duration=$OPTARG
+			;;
+		F)
+			footprint=-F
 			;;
 	esac
 done
@@ -44,7 +48,7 @@ do
 	echo -e "points\n$observer" >"$tmpdir"/loc
 	for i in "${track[@]}"
 	do
-		asciiworld-sat-calc <"$i" >>"$tmpdir"/loc
+		asciiworld-sat-calc "$footprint" <"$i" >>"$tmpdir"/loc
 		(( $? != 0 )) && exit 1
 	done
 	asciiworld -Tosl "$tmpdir"/loc -d ast
