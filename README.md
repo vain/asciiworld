@@ -68,7 +68,7 @@ Points: Latitude, longitude. They are simply marked with an "X".
 
 Tracks: Latitude, longitude. Tracks are rendered with a special charset, all points on a track have the same color. Note that, for the time being, asciiworld draws tracks as points, too. To create the illusion of a connected line, you should simply provide enough points. :-)
 
-Circles: Latitude, longitude, radius. You can draw great circles (orthodromes) and small circles.
+Circles: Latitude, longitude, radius. Latitude and longitude specify the circle's center. Radius is measured in degree, too: It's the angle between two vectors A and B, where A points from the sphere's center to the circle's center and B points from the sphere's center to an arbitrary point on the circle. Thus, if you specify a radius of 90 degree, you get a Great Circle. For less than 90 degree, you get a Small Circle.
 
 `-s`: Turn on "day-and-night" mode. Areas that are currently lit by the sun will be shown as green, whereas the other parts are shown as dark dark blue. Areas currently in the "twilight zone" will be shaded accordingly (see `-d`). The "position" of the sun itself will be marked with an "S". A yellow line marks the current sunset/sunrise locations.
 
