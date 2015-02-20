@@ -82,6 +82,7 @@ Circles: Latitude, longitude, radius. Latitude and longitude specify the circle'
 
 *  `kav`: Kavrayskiy VII
 *  `lam`: Lambert cylindrical equal-area
+*  `ham`: Hammer
 
 `-b`: Draw a border around the projected world. This can be useful for some projections.
 

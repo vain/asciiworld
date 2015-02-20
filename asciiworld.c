@@ -109,6 +109,25 @@ project_lambert(struct screen *s, double lon, double lat, double *x, double *y)
 }
 
 void
+project_hammer(struct screen *s, double lon, double lat, double *x, double *y)
+{
+    double lonr = lon * DEG_2_RAD;
+    double latr = lat * DEG_2_RAD;
+
+    /* Actual projection. */
+    *x = (2 * sqrt(2) * cos(latr) * sin(lonr * 0.5)) /
+         sqrt(1 + cos(latr) * cos(lonr * 0.5));
+    *y = (sqrt(2) * sin(latr)) /
+         sqrt(1 + cos(latr) * cos(lonr * 0.5));
+
+    /* Scale to our screen. */
+    *x *= RAD_2_DEG;
+    *y *= RAD_2_DEG;
+    *x = (*x + 180) / 360 * s->width;
+    *y = (180 - (*y + 90)) / 180 * s->height;
+}
+
+void
 project_equirect(struct screen *s, double lon, double lat, double *x, double *y)
 {
     *x = (lon + 180) / 360 * s->width;
@@ -815,6 +834,8 @@ main(int argc, char **argv)
                     s.project = project_kavrayskiy;
                 else if (strncmp(optarg, "lam", 3) == 0)
                     s.project = project_lambert;
+                else if (strncmp(optarg, "ham", 3) == 0)
+                    s.project = project_hammer;
                 break;
             case 'b':
                 s.world_border = 1;
