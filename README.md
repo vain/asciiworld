@@ -72,6 +72,8 @@ Circles: Latitude, longitude, radius. Latitude and longitude specify the circle'
 
 `-s`: Turn on "day-and-night" mode. Areas that are currently lit by the sun will be shown as green, whereas the other parts are shown as dark dark blue. Areas currently in the "twilight zone" will be shaded accordingly (see `-d`). The "position" of the sun itself will be marked with an "S". A yellow line marks the current sunset/sunrise locations.
 
+`-S`: When `-s` is given, only shade the map but do NOT add additional markers such as "S".
+
 `-d dusk`: Choose definition of "dusk" and thus the twilight span. Accepts "nau" for nautical dusk (12 degree twilight) or "ast" for astronomical dusk (18 degree twilight). By default, civil dusk (6 degree twilight) is used.
 
 `-T`: Do not print the final newline to avoid scrolling. Using `-sT`, you can show a continuously updated map in "day-and-night" mode:

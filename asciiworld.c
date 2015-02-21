@@ -790,7 +790,7 @@ main(int argc, char **argv)
 {
     struct screen s;
     struct winsize w;
-    int trailing_newline = 1;
+    int trailing_newline = 1, sun_markers = 1;
     int opt, c;
     char *map = DEFAULT_MAP;
     char *highlight_locations = NULL;
@@ -807,7 +807,7 @@ main(int argc, char **argv)
 
     screen_init(&s);
 
-    while ((opt = getopt(argc, argv, "w:h:m:l:sTp:bc:od:W:")) != -1)
+    while ((opt = getopt(argc, argv, "w:h:m:l:sSTp:bc:od:W:")) != -1)
     {
         switch (opt)
         {
@@ -825,6 +825,9 @@ main(int argc, char **argv)
                 break;
             case 's':
                 s.sun.active = 1;
+                break;
+            case 'S':
+                sun_markers = 0;
                 break;
             case 'T':
                 trailing_newline = 0;
@@ -874,14 +877,15 @@ main(int argc, char **argv)
     if (s.sun.active)
     {
         screen_shade_map(&s);
-        screen_mark_sun_border(&s);
+        if (sun_markers)
+            screen_mark_sun_border(&s);
     }
     if (s.world_border)
         screen_draw_world_border(&s);
     if (highlight_locations != NULL)
         if (!screen_mark_locations(&s, highlight_locations))
             exit(EXIT_FAILURE);
-    if (s.sun.active)
+    if (s.sun.active && sun_markers)
         screen_mark_sun(&s);
     if (outimg == NULL)
         screen_show_interpreted(&s, trailing_newline);
