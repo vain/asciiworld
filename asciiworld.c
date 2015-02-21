@@ -11,6 +11,9 @@
 #define DEG_2_RAD (M_PI / 180.0)
 #define RAD_2_DEG (180.0 / M_PI)
 
+#define NUM_SHADES 8
+#define NUM_TRACKS 3
+
 enum sequence { SEQ_RESET, SEQ_LOCATION, SEQ_SUN, SEQ_SUN_BORDER, SEQ_SHADE1,
                 SEQ_SHADE2, SEQ_SHADE3, SEQ_SHADE4, SEQ_SHADE5, SEQ_SHADE6,
                 SEQ_SHADE7, SEQ_SHADE8, SEQ_LINE, SEQ_TRACK1, SEQ_TRACK2,
@@ -54,8 +57,8 @@ struct screen
     gdImagePtr img;
     int col_black;
     int col_normal;
-    int col_shade[8];
-    int col_track[3];
+    int col_shade[NUM_SHADES];
+    int col_track[NUM_TRACKS];
     int col_highlight;
     int col_sun;
     int col_sun_border;
@@ -185,15 +188,18 @@ screen_init_img(struct screen *s, int width, int height)
      * integers that libgd assigns to each color. */
     s->col_black = gdImageColorAllocate(s->img, 0, 0, 0);
     s->col_normal = gdImageColorAllocate(s->img, 200, 200, 200);
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < NUM_SHADES; i++)
     {
         s->col_shade[i] = gdImageColorAllocate(s->img, 0,
-                                               255 * i / 7.0,
-                                               255 * (7 - i) / 7.0);
+                                               255 * i / (double)(NUM_SHADES - 1),
+                                               255 * (NUM_SHADES - 1 - i) /
+                                                (double)(NUM_SHADES - 1));
     }
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < NUM_TRACKS; i++)
     {
-        s->col_track[i] = gdImageColorAllocate(s->img, 255, 0, 255 * (2 - i) / 2.0);
+        s->col_track[i] = gdImageColorAllocate(s->img, 255, 0,
+                                               255 * (NUM_TRACKS - 1 - i) /
+                                                (double)(NUM_TRACKS - 1));
     }
     s->col_highlight = gdImageColorAllocate(s->img, 255, 0, 0);
     s->col_sun = gdImageColorAllocate(s->img, 255, 255, 0);
@@ -244,7 +250,7 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                 is_sun_border = 0;
                 is_track = 0;
 
-                for (i = 0; i < 3; i++)
+                for (i = 0; i < NUM_TRACKS; i++)
                     if (a == s->col_track[i] || b == s->col_track[i] ||
                         c == s->col_track[i] || d == s->col_track[i])
                     {
@@ -270,7 +276,7 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
                         print_color(s, SEQ_SUN_BORDER);
                     }
                     else if (!is_track)
-                        for (i = 0; i < 8; i++)
+                        for (i = 0; i < NUM_SHADES; i++)
                             if (a == s->col_shade[i] || b == s->col_shade[i] ||
                                 c == s->col_shade[i] || d == s->col_shade[i])
                             {
@@ -576,7 +582,7 @@ screen_mark_locations(struct screen *s, char *file)
         {
             /* All points on a track have the same color. */
             tracki++;
-            tracki %= 3;
+            tracki %= NUM_TRACKS;
             s->brush = s->col_track[tracki];
 
             /* Read points until EOF or block delimiter. */
@@ -600,7 +606,7 @@ screen_mark_locations(struct screen *s, char *file)
                 {
                     /* Each circle has a new color. */
                     tracki++;
-                    tracki %= 3;
+                    tracki %= NUM_TRACKS;
                     s->brush = s->col_track[tracki];
 
                     screen_draw_spherical_circle(s, lon, lat, r);
@@ -657,7 +663,7 @@ void
 screen_shade_map(struct screen *s)
 {
     int black, shade_brush, orig;
-    int shade[8];
+    int shade[NUM_SHADES];
     int ix, iy, i, di90;
     gdImagePtr img;
     double phi, lambda, phi_sun, lambda_sun, zeta, aspan;
@@ -673,7 +679,7 @@ screen_shade_map(struct screen *s)
     img = gdImageCreate(s->width, s->height);
     black = gdImageColorAllocate(img, 0, 0, 0);
     (void)black;  /* only needed to set background */
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < NUM_SHADES; i++)
         shade[i] = gdImageColorAllocate(img, 0, 0, i);
 
     aspan = s->shade_steps_degree * DEG_2_RAD;
@@ -695,9 +701,9 @@ screen_shade_map(struct screen *s)
              * dusk_degree) or night. */
             d90 = zeta * RAD_2_DEG - 90;
             d90 /= s->dusk_degree;
-            di90 = 7 - (int)round(d90 * 7);
+            di90 = (NUM_SHADES - 1) - (int)round(d90 * (NUM_SHADES - 1));
             di90 = di90 < 0 ? 0 : di90;
-            di90 = di90 > 7 ? 7 : di90;
+            di90 = di90 > NUM_SHADES - 1 ? NUM_SHADES - 1 : di90;
             shade_brush = shade[di90];
 
             (s->project)(s, lambda * RAD_2_DEG, phi * RAD_2_DEG, &x, &y);
@@ -726,7 +732,7 @@ screen_shade_map(struct screen *s)
             orig = gdImageGetPixel(s->img, ix, iy);
             if (orig != s->col_black)
             {
-                for (i = 0; i < 8; i++)
+                for (i = 0; i < NUM_SHADES; i++)
                 {
                     if (gdImageGetPixel(img, ix, iy) == shade[i])
                     {
