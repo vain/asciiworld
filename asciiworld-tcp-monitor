@@ -2,8 +2,9 @@
 
 observer=
 duration=0
+raw_args=
 
-while getopts o:d: name
+while getopts o:d:r: name
 do
 	case $name in
 		o)
@@ -11,6 +12,9 @@ do
 			;;
 		d)
 			duration=$OPTARG
+			;;
+		r)
+			raw_args=$OPTARG
 			;;
 	esac
 done
@@ -45,7 +49,7 @@ do
 		fi
 	done
 
-	asciiworld -Tosl "$track"
+	asciiworld -Tosl "$track" $raw_args
 	(( $? != 0 )) && exit 1
 	sleep 2
 	tput home

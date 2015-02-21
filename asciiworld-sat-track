@@ -3,8 +3,9 @@
 observer=
 duration=0
 footprint=
+raw_args=
 
-while getopts o:d:F name
+while getopts o:d:Fr: name
 do
 	case $name in
 		o)
@@ -15,6 +16,9 @@ do
 			;;
 		F)
 			footprint=-F
+			;;
+		r)
+			raw_args=$OPTARG
 			;;
 	esac
 done
@@ -51,7 +55,7 @@ do
 		asciiworld-sat-calc "$footprint" <"$i" >>"$tmpdir"/loc
 		(( $? != 0 )) && exit 1
 	done
-	asciiworld -Tosl "$tmpdir"/loc -d ast
+	asciiworld -Tosl "$tmpdir"/loc -d ast $raw_args
 	(( $? != 0 )) && exit 1
 	sleep 0.5
 	tput home

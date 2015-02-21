@@ -51,6 +51,8 @@ You can also specify `-d 5` to quit after 5 seconds.
 
 You can also specify `-F` to omit the footprint track.
 
+You can pass raw arguments to asciiworld using `-r`, e.g. `-r '-p ham -Sb'`.
+
 Dependencies:
 
 *  tput from ncurses
@@ -86,6 +88,8 @@ Combining the tools with asciiworld: asciiworld-tcp-monitor
 Note that `-o` is optional. If it's not given, the script will try to auto-detect your public IP using asciiworld-ip-geo.
 
 You can also specify `-d 5` to quit after 5 seconds.
+
+You can pass raw arguments to asciiworld using `-r`, e.g. `-r '-p ham -Sb'`.
 
 Dependencies:
 
