@@ -23,6 +23,7 @@ do
 	esac
 done
 shift $((OPTIND - 1))
+title="Tracking: $@"
 
 [[ -z "$observer" ]] && observer=$(asciiworld-ip-geo)
 [[ -z "$observer" ]] && exit 1
@@ -55,7 +56,7 @@ do
 		asciiworld-sat-calc "$footprint" <"$i" >>"$tmpdir"/loc
 		(( $? != 0 )) && exit 1
 	done
-	asciiworld -Tosl "$tmpdir"/loc -d ast $raw_args
+	asciiworld -Tosl "$tmpdir"/loc -d ast -t "$title" $raw_args
 	(( $? != 0 )) && exit 1
 	sleep 0.5
 	tput home
