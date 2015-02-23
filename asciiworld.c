@@ -17,7 +17,7 @@
 enum sequence { SEQ_RESET, SEQ_LOCATION, SEQ_SUN, SEQ_SUN_BORDER, SEQ_SHADE1,
                 SEQ_SHADE2, SEQ_SHADE3, SEQ_SHADE4, SEQ_SHADE5, SEQ_SHADE6,
                 SEQ_SHADE7, SEQ_SHADE8, SEQ_LINE, SEQ_TRACK1, SEQ_TRACK2,
-                SEQ_TRACK3 };
+                SEQ_TRACK3, SEQ_TITLE };
 char *seq_256colors[] = { "\033[0m",               /* reset */
                           "\033[38;5;196m",        /* location */
                           "\033[38;5;220m",        /* sun */
@@ -33,7 +33,8 @@ char *seq_256colors[] = { "\033[0m",               /* reset */
                           "\033[38;5;255m",        /* line */
                           "\033[38;5;201m",        /* track1 */
                           "\033[38;5;255m",        /* track2 */
-                          "\033[38;5;202m" };      /* track3 */
+                          "\033[38;5;202m",        /* track3 */
+                          "\033[1m" };             /* title */
 char *seq_8colors[] = { "\033[0m",                 /* reset */
                         "\033[31;1m",              /* location */
                         "\033[33m",                /* sun */
@@ -49,7 +50,8 @@ char *seq_8colors[] = { "\033[0m",                 /* reset */
                         "\033[37m",                /* line */
                         "\033[35;1m",              /* track1 */
                         "\033[35;1m",              /* track2 */
-                        "\033[35;1m" };            /* track3 */
+                        "\033[35;1m",              /* track3 */
+                        "\033[1m" };               /* title */
 
 struct screen
 {
@@ -66,6 +68,7 @@ struct screen
     int brush;
 
     char **esc_seq;
+    char *title;
 
     int solid_land;
     int world_border;
@@ -165,6 +168,7 @@ screen_init(struct screen *s)
     s->shade_steps_degree = 1;
     s->dusk_degree = 6;
     s->esc_seq = seq_256colors;
+    s->title = NULL;
 }
 
 int
@@ -216,6 +220,73 @@ print_color(struct screen *s, enum sequence seq)
         printf("%s", s->esc_seq[seq]);
 }
 
+int
+screen_print_title(struct screen *s, int x, int y)
+{
+    int tx1, tx2, bx1, bx2, bmx1, bmx2, xr, yr, ti;
+    const int box_x_margin = 2;
+
+    if (s->title == NULL)
+        return 0;
+
+    tx1 = (s->width / 2 - strlen(s->title)) - 2 * box_x_margin;
+    tx2 = tx1 + strlen(s->title);
+
+    bx1 = tx1 - box_x_margin;
+    bx2 = tx2 + box_x_margin;
+
+    bmx1 = bx1 - box_x_margin;
+    bmx2 = bx2 + box_x_margin;
+
+    if (bmx1 < 0 || bmx2 > s->width / 2)
+        return 0;
+
+    xr = x / 2;
+    yr = y / 2;
+
+    ti = xr - tx1;
+
+    if (bmx1 <= xr && xr < bmx2 && yr <= 4)
+    {
+        if (xr < bx1 || bx2 <= xr)
+            printf(" ");
+        else
+        {
+            switch (yr)
+            {
+                case 0:
+                case 4:
+                    printf(" ");
+                    break;
+                case 1:
+                case 3:
+                    if (xr == bx1 || xr == bx2 - 1)
+                        printf("+");
+                    else
+                        printf("-");
+                    break;
+                case 2:
+                    if (xr == bx1 || xr == bx2 - 1)
+                        printf("|");
+                    else
+                    {
+                        if (xr < tx1 || tx2 <= xr)
+                            printf(" ");
+                        else
+                        {
+                            print_color(s, SEQ_TITLE);
+                            printf("%c", s->title[ti]);
+                            print_color(s, SEQ_RESET);
+                        }
+                    }
+                    break;
+            }
+        }
+        return 1;
+    }
+    return 0;
+}
+
 void
 screen_show_interpreted(struct screen *s, int trailing_newline)
 {
@@ -232,6 +303,9 @@ screen_show_interpreted(struct screen *s, int trailing_newline)
     {
         for (x = 0; x < s->width - 1; x += 2)
         {
+            if (screen_print_title(s, x, y))
+                continue;
+
             a = gdImageGetPixel(s->img, x, y);
             b = gdImageGetPixel(s->img, x + 1, y);
             c = gdImageGetPixel(s->img, x, y + 1);
@@ -813,7 +887,7 @@ main(int argc, char **argv)
 
     screen_init(&s);
 
-    while ((opt = getopt(argc, argv, "w:h:m:l:sSTp:bc:od:W:")) != -1)
+    while ((opt = getopt(argc, argv, "w:h:m:l:sSTp:bc:od:W:t:")) != -1)
     {
         switch (opt)
         {
@@ -867,6 +941,9 @@ main(int argc, char **argv)
                 break;
             case 'W':
                 outimg = optarg;
+                break;
+            case 't':
+                s.title = optarg;
                 break;
             default:
                 exit(EXIT_FAILURE);

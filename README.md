@@ -94,6 +94,8 @@ Circles: Latitude, longitude, radius. Latitude and longitude specify the circle'
 
 `-W path`: Instead of creating ASCII output, you can save the resulting image as an "uninterpreted" PNG file. You will want to use `-w` and `-h` together with this option.
 
+`-t "some title"`: Adds a title label in the upper right corner.
+
 CREDITS
 =======
 
