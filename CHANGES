@@ -1,0 +1,11 @@
+Release history for asciiworld
+
+next
+  [LICENSING]
+  - The project has been relicensed under the MIT license (more
+    precisely called "Expat License", but everyone calls it "MIT
+    license" these days).
+
+v15.03 and earlier releases
+  - Sorry, the CHANGES file did not exist back then. Please refer to the
+    Git log.
